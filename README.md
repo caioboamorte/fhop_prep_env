@@ -241,15 +241,6 @@ Durante a preparação serão criados os seguintes diretórios:
 └── 4G-install/
 ```
 
-As antigas estruturas:
-
-- `arquiv_install`
-- `flighthub`
-
-não são mais utilizadas.
-
----
-
 # Alterações realizadas durante a preparação
 
 Quando executado sem a opção `--check-only`, o script pode:
