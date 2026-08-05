@@ -1,137 +1,234 @@
-📦 FH2 OP - Script de Preparação do Servidor (v5.3)
+# Script de Preparação do Ambiente para o FlightHub 2 On-Premises
 
-Este script automatiza a verificação e preparação de servidores Ubuntu para instalação do DJI FlightHub 2 On-Premises (FH2 OP).
+Este script automatiza a verificação e preparação de servidores Ubuntu para instalação do **DJI FlightHub 2 On-Premises (FH2 OP)**.
 
-Além de verificar se o servidor atende aos requisitos mínimos, ele também pode preparar automaticamente o ambiente para a instalação.
+Ele foi desenvolvido com base nos requisitos oficiais da DJI e na experiência prática adquirida durante diversas implantações, reduzindo o tempo de preparação do ambiente e evitando problemas recorrentes durante a instalação.
 
-✅ Sistemas suportados
-Ubuntu Server 22.04 LTS
-Ubuntu Server 24.04 LTS
+---
 
-Outras versões não são suportadas pelo script.
+# Funcionalidades
 
-🚀 Modos de utilização
+- Verificação de compatibilidade do Ubuntu
+- Verificação das instruções obrigatórias da CPU
+- Validação da memória RAM
+- Validação do armazenamento
+- Verificação da GPU NVIDIA
+- Verificação e instalação do Docker recomendado
+- Instalação e configuração do Google Chrome
+- Verificação de Internet e DNS
+- Verificação da sincronização de horário (NTP)
+- Configuração do Firewall
+- Criação automática da estrutura de diretórios
+- Relatório completo ao final da execução
+- Modo de verificação (sem alterações no sistema)
 
-1️⃣ Somente verificar o servidor (Recomendado)
-Nenhuma alteração será feita.
-Ideal para validar o ambiente antes da instalação.
+---
 
+# Sistemas Operacionais Suportados
+
+- Ubuntu Server 22.04 LTS
+- Ubuntu Server 24.04 LTS
+
+---
+
+# Modos de Execução
+
+## 1. Apenas verificar o ambiente (Recomendado)
+
+Executa todas as verificações sem alterar o sistema.
+
+```bash
 sudo ./setup_fh2VER5.3.sh --check-only
+```
 
 Neste modo o script:
 
-✔️ verifica todos os requisitos
+- verifica todos os requisitos;
+- gera um relatório completo.
 
-✔️ gera um relatório completo
+**Nenhuma alteração é realizada**, incluindo:
 
-❌ não instala nada
+- atualização do sistema;
+- instalação de pacotes;
+- instalação de drivers;
+- instalação ou remoção do Docker;
+- instalação do Google Chrome;
+- alteração de firewall;
+- alteração de locale;
+- alteração de timezone;
+- habilitação do NTP;
+- criação de diretórios;
+- reinicialização do servidor.
 
-❌ não atualiza o sistema
+---
 
-❌ não cria pastas
+## 2. Preparar o ambiente
 
-❌ não altera configurações
-
-❌ não reinicia o servidor
-
-
-2️⃣ Preparar o servidor
-
+```bash
 sudo ./setup_fh2VER5.3.sh
+```
 
-Além das verificações, o script prepara automaticamente o servidor.
+Além das verificações, o script realiza automaticamente toda a preparação necessária para instalação do FlightHub 2 On-Premises.
 
-3️⃣ Preparar e reiniciar automaticamente
+---
 
+## 3. Preparar o ambiente e reiniciar automaticamente
+
+```bash
 sudo ./setup_fh2VER5.3.sh --reboot
+```
 
-Executa toda a preparação e reinicia o servidor ao finalizar.
+Executa toda a preparação e reinicia automaticamente o servidor ao final da execução.
 
+---
 
-🔎 O que o script verifica?
+# O que o script verifica?
 
-✔️ Sistema Operacional
-Confirma se o Ubuntu é compatível.
+## Sistema Operacional
 
-✔️ CPU
-Verifica se o processador suporta as instruções obrigatórias:
+Confirma se o servidor está executando uma versão compatível do Ubuntu.
 
-SSE4.2
-POPCNT
-AVX
-AVX2
+---
 
-Sem essas instruções o FlightHub pode não funcionar corretamente.
-O principal sintoma é o container tas-service permanecer Unhealthy.
+## CPU
 
-✔️ Memória RAM
-O script verifica a memória disponível.
+São verificadas as instruções obrigatórias:
 
-Mais de 32 GB
-✅ Recomendado para:
-FlightHub 2
-Terra (Reconstrução)
+- SSE4.2
+- POPCNT
+- AVX
+- AVX2
 
+Estas instruções são indispensáveis para o funcionamento correto do FlightHub 2.
 
-32 GB ou menos
-Recomendado apenas para:
-FlightHub 2
+Caso alguma delas esteja ausente, a instalação poderá falhar.
 
-Caso o módulo Terra seja utilizado, é comum ocorrer:
-- tarefas permanecendo em Pending/Pendente
-- reconstruções que nunca iniciam.
+O principal sintoma observado é o container **tas-service** permanecer com status **Unhealthy**.
 
-✔️ Armazenamento
+---
 
-São realizadas duas verificações.
+## Memória RAM
 
-Espaço livre
-É necessário possuir:
+Para utilização do módulo de reconstrução (**Terra**) recomenda-se que o servidor possua **mais de 32 GB de memória RAM alocada**.
+
+### Acima de 32 GB
+
+Recomendado para:
+
+- FlightHub 2
+- Terra (Reconstrução)
+
+### 32 GB ou menos
+
+Adequado apenas para:
+
+- FlightHub 2
+
+Caso o módulo Terra seja instalado nessas condições, é comum que as tarefas de reconstrução permaneçam permanentemente no estado:
+
+```
+Pendente
+```
+
+---
+
+## Armazenamento
+
+São realizadas duas verificações independentes.
+
+### Espaço livre
+
+É necessário possuir pelo menos:
+
+```
 300 GB livres
-Caso contrário a instalação pode falhar.
+```
 
-Capacidade do disco
-O disco físico onde o Ubuntu está instalado deve possuir:
-1 TB ou mais
-Isso garante espaço suficiente para operação e crescimento do ambiente.
+Este espaço é utilizado durante a instalação para:
 
-✔️ Docker
+- imagens Docker;
+- bancos de dados;
+- arquivos temporários;
+- componentes do FlightHub.
 
-O FlightHub deve utilizar:
+---
+
+### Capacidade do disco
+
+O disco físico onde o Ubuntu está instalado deve possuir capacidade mínima de:
+
+```
+1 TB
+```
+
+Essa recomendação garante espaço suficiente para:
+
+- banco de dados;
+- imagens;
+- vídeos;
+- logs;
+- resultados de reconstrução;
+- crescimento futuro da instalação.
+
+---
+
+## Docker
+
+O script verifica a versão instalada do Docker.
+
+Versão homologada:
+
+```
 Docker 27
+```
 
-O Docker 29 não é suportado.
-Durante instalações práticas foi observado que o Docker 29 pode causar erros fatais no frontend do FlightHub.
+O **Docker 29 não é suportado**.
 
-✔️ GPU NVIDIA
+Durante implantações práticas foram observados erros fatais no frontend do FlightHub 2 utilizando essa versão.
+
+---
+
+## GPU NVIDIA
 
 Caso exista uma GPU NVIDIA instalada, o script verifica se o driver está corretamente instalado.
-Na preparação completa, instala automaticamente o driver recomendado quando necessário. 
 
-No modo --check-only, apenas informa o status.
+Durante a preparação completa, o driver recomendado é instalado automaticamente quando necessário.
 
-✔️ Internet
+---
 
-Confirma acesso à Internet.
+## Internet
 
-✔️ DNS
+Verifica se o servidor possui acesso à Internet.
 
-Confirma resolução de nomes.
+---
 
-✔️ Sincronização de horário
+## DNS
 
-Verifica o status do NTP.
-Na preparação completa o NTP é habilitado automaticamente.
+Verifica se o servidor consegue resolver nomes de domínio.
 
-✔️ Firewall
+---
 
-Verifica o UFW.
-Na preparação completa o firewall é desabilitado automaticamente.
+## Sincronização de Horário
 
-📁 Estrutura de diretórios criada
+Verifica o funcionamento do NTP.
 
-Durante a preparação serão criados:
+Durante a preparação completa, o NTP é habilitado automaticamente.
 
+---
+
+## Firewall
+
+Verifica a presença do UFW.
+
+Durante a preparação completa, o firewall é desabilitado automaticamente.
+
+---
+
+# Estrutura de Diretórios
+
+Durante a preparação serão criados os seguintes diretórios:
+
+```
 /
 ├── fhop-install/
 │   └── install/
@@ -142,50 +239,83 @@ Durante a preparação serão criados:
 ├── terra-install/
 │
 └── 4G-install/
+```
 
-🛠️ O que o script altera (modo normal)
+As antigas estruturas:
 
-Quando executado sem --check-only, o script pode:
+- `arquiv_install`
+- `flighthub`
 
-atualizar o Ubuntu;
-corrigir dependências quebradas do APT;
-instalar utilitários necessários;
-instalar ou substituir o Docker pela versão recomendada (27);
-instalar o Google Chrome configurado para uso como root (--no-sandbox);
-instalar o driver NVIDIA recomendado;
-configurar locale para en_US.UTF-8;
-configurar o fuso horário para America/Sao_Paulo;
-habilitar a sincronização NTP;
-desabilitar o firewall UFW;
-criar a estrutura de diretórios utilizada pelo FlightHub 2.
+não são mais utilizadas.
 
-📊 Relatório Final
+---
 
-Ao término da execução é exibido um resumo contendo:
+# Alterações realizadas durante a preparação
 
-modo de execução;
-Ubuntu;
-CPU;
-compatibilidade da CPU;
-memória RAM;
-armazenamento;
-GPU NVIDIA;
-driver NVIDIA;
-Internet;
-DNS;
-Firewall;
-Docker;
-Google Chrome;
-status da criação dos diretórios.
+Quando executado sem a opção `--check-only`, o script pode:
 
-💡 Recomendação
+- Atualizar o Ubuntu;
+- Corrigir dependências quebradas do APT;
+- Instalar utilitários necessários;
+- Instalar ou substituir o Docker pela versão homologada;
+- Instalar e configurar o Google Chrome (`--no-sandbox`);
+- Instalar o driver NVIDIA recomendado;
+- Configurar o locale para `en_US.UTF-8`;
+- Configurar o fuso horário `America/Sao_Paulo`;
+- Habilitar a sincronização NTP;
+- Desabilitar o firewall UFW;
+- Criar toda a estrutura de diretórios necessária para o FlightHub 2.
 
-Antes de qualquer instalação do FlightHub 2 On-Premises, execute primeiro:
+---
 
+# Relatório Final
+
+Ao término da execução é apresentado um resumo contendo:
+
+- Modo de execução;
+- Versão do Ubuntu;
+- Modelo da CPU;
+- Compatibilidade da CPU;
+- Memória RAM;
+- Capacidade do disco;
+- Espaço livre disponível;
+- GPU NVIDIA;
+- Driver NVIDIA;
+- Internet;
+- DNS;
+- Firewall;
+- Docker;
+- Google Chrome;
+- Status da criação dos diretórios.
+
+Esse relatório permite identificar rapidamente qualquer requisito que ainda precise ser corrigido antes da instalação do FlightHub 2.
+
+---
+
+# Fluxo recomendado
+
+Antes de iniciar qualquer instalação do FlightHub 2 On-Premises:
+
+```bash
 sudo ./setup_fh2VER5.3.sh --check-only
+```
 
-Após corrigir todos os itens apontados pelo relatório, execute:
+Após corrigir todos os itens apontados pelo relatório:
 
+```bash
 sudo ./setup_fh2VER5.3.sh
+```
 
-Dessa forma, o ambiente será preparado seguindo os requisitos esperados para o FlightHub 2 On-Premises.
+Caso deseje que o servidor seja reiniciado automaticamente ao final da preparação:
+
+```bash
+sudo ./setup_fh2VER5.3.sh --reboot
+```
+
+---
+
+# Licença
+
+Este script foi desenvolvido para auxiliar na preparação de ambientes destinados à instalação do DJI FlightHub 2 On-Premises.
+
+Ele não substitui a documentação oficial da DJI, mas complementa o processo de instalação com validações adicionais e automações baseadas em experiências reais de implantação.
