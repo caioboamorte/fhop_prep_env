@@ -21,12 +21,19 @@ sudo ./setup_fh2VER5.3.sh --check-only
 Neste modo o script:
 
 ✔️ verifica todos os requisitos
+
 ✔️ gera um relatório completo
+
 ❌ não instala nada
+
 ❌ não atualiza o sistema
+
 ❌ não cria pastas
+
 ❌ não altera configurações
+
 ❌ não reinicia o servidor
+
 
 2️⃣ Preparar o servidor
 
