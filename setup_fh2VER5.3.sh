@@ -448,7 +448,7 @@ info "O instalador precisa de pelo menos 300 GB livres durante a instalacao."
 info "O disco fisico que hospeda o sistema deve possuir no minimo 1 TB de capacidade total."
 
 ROOT_SOURCE="$(findmnt -n -o SOURCE /)"
-ROOT_DISK_NAME="$(lsblk -s -n -o NAME,TYPE "$ROOT_SOURCE" 2>/dev/null | awk '$2=="disk" {print $1; exit}')"
+ROOT_DISK_NAME="$(lsblk -s -r -n -o NAME,TYPE "$ROOT_SOURCE" 2>/dev/null | awk '$2=="disk" {print $1; exit}')"
 
 if [[ -n "$ROOT_DISK_NAME" ]]; then
   SYSTEM_DISK="/dev/$ROOT_DISK_NAME"
