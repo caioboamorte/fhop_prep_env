@@ -13,7 +13,8 @@ Ele foi desenvolvido com base nos requisitos oficiais da DJI e na experiência p
 - Validação da memória RAM
 - Validação do armazenamento
 - Verificação da GPU NVIDIA
-- Verificação e instalação do Docker recomendado
+- Validação exata das versões do Docker Engine, Docker Compose e containerd
+- Bloqueio automático dos pacotes do Docker após a validação
 - Instalação e configuração do Google Chrome
 - Verificação de Internet e DNS
 - Verificação da sincronização de horário (NTP)
@@ -38,7 +39,7 @@ Ele foi desenvolvido com base nos requisitos oficiais da DJI e na experiência p
 Executa todas as verificações sem alterar o sistema.
 
 ```bash
-sudo ./setup_fh2VER5.3.sh --check-only
+sudo ./setup_fh2VER5.3.1.sh --check-only
 ```
 
 Neste modo o script:
@@ -65,7 +66,7 @@ Neste modo o script:
 ## 2. Preparar o ambiente
 
 ```bash
-sudo ./setup_fh2VER5.3.sh
+sudo ./setup_fh2VER5.3.1.sh
 ```
 
 Além das verificações, o script realiza automaticamente toda a preparação necessária para instalação do FlightHub 2 On-Premises.
@@ -75,7 +76,7 @@ Além das verificações, o script realiza automaticamente toda a preparação n
 ## 3. Preparar o ambiente e reiniciar automaticamente
 
 ```bash
-sudo ./setup_fh2VER5.3.sh --reboot
+sudo ./setup_fh2VER5.3.1.sh --reboot
 ```
 
 Executa toda a preparação e reinicia automaticamente o servidor ao final da execução.
@@ -170,17 +171,37 @@ Essa recomendação garante espaço suficiente para:
 - resultados de reconstrução;
 - crescimento futuro da instalação.
 
+A versão 5.3.1 também melhora a detecção do disco físico em sistemas nos quais o `lsblk` exibe caracteres de árvore, evitando erros como:
+
+```text
+lsblk: /dev/└─sda: not a block device
+```
+
 ---
 
 ## Docker
 
-O script verifica a versão instalada do Docker.
+O script valida as versões exatas do Docker Engine, Docker Compose e containerd.
 
-Versão homologada:
+Versões homologadas:
 
+```text
+Docker Engine 27.2.0
+Docker Compose 2.29.2
+containerd 1.7.21
 ```
-Docker 27
-```
+
+Após instalar e validar essas versões, o script bloqueia os seguintes pacotes APT com `apt-mark hold`:
+
+- `docker-ce`
+- `docker-ce-cli`
+- `docker-buildx-plugin`
+- `docker-compose-plugin`
+- `containerd.io`
+
+O bloqueio somente é aplicado quando todas as versões instaladas correspondem ao pacote homologado. Caso alguma versão seja diferente, o script apresenta as versões esperadas e detectadas e interrompe a preparação. Isso evita o bloqueio de uma instalação incorreta do Docker.
+
+O bloqueio impede que comandos rotineiros, como `apt upgrade` e `apt full-upgrade`, alterem automaticamente as versões do Docker exigidas pelo FlightHub 2 On-Premises.
 
 O **Docker 29 não é suportado**.
 
@@ -241,6 +262,8 @@ Durante a preparação serão criados os seguintes diretórios:
 └── 4G-install/
 ```
 
+---
+
 # Alterações realizadas durante a preparação
 
 Quando executado sem a opção `--check-only`, o script pode:
@@ -248,7 +271,8 @@ Quando executado sem a opção `--check-only`, o script pode:
 - Atualizar o Ubuntu;
 - Corrigir dependências quebradas do APT;
 - Instalar utilitários necessários;
-- Instalar ou substituir o Docker pela versão homologada;
+- Instalar ou substituir o Docker Engine, Docker Compose e containerd pelas versões homologadas;
+- Bloquear os pacotes validados do Docker para impedir atualizações automáticas;
 - Instalar e configurar o Google Chrome (`--no-sandbox`);
 - Instalar o driver NVIDIA recomendado;
 - Configurar o locale para `en_US.UTF-8`;
@@ -276,6 +300,7 @@ Ao término da execução é apresentado um resumo contendo:
 - DNS;
 - Firewall;
 - Docker;
+- Status do bloqueio das versões do Docker;
 - Google Chrome;
 - Status da criação dos diretórios.
 
@@ -288,19 +313,19 @@ Esse relatório permite identificar rapidamente qualquer requisito que ainda pre
 Antes de iniciar qualquer instalação do FlightHub 2 On-Premises:
 
 ```bash
-sudo ./setup_fh2VER5.3.sh --check-only
+sudo ./setup_fh2VER5.3.1.sh --check-only
 ```
 
 Após corrigir todos os itens apontados pelo relatório:
 
 ```bash
-sudo ./setup_fh2VER5.3.sh
+sudo ./setup_fh2VER5.3.1.sh
 ```
 
 Caso deseje que o servidor seja reiniciado automaticamente ao final da preparação:
 
 ```bash
-sudo ./setup_fh2VER5.3.sh --reboot
+sudo ./setup_fh2VER5.3.1.sh --reboot
 ```
 
 ---
