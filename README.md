@@ -18,4 +18,6 @@ This repository contains an automated validation and preparation script for DJI 
 
 ## Latest Release
 
-See the **Releases** section for the latest version.
+Current version: **5.3.1**
+
+See the **Releases** section for release notes and downloads.
