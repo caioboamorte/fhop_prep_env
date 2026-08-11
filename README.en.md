@@ -13,7 +13,8 @@ It was developed based on DJI's official requirements and practical experience a
 - RAM validation
 - Storage validation
 - NVIDIA GPU detection
-- Docker verification and recommended version installation
+- Exact Docker Engine, Docker Compose, and containerd version validation
+- Automatic Docker package version locking after successful validation
 - Google Chrome installation and configuration
 - Internet and DNS connectivity verification
 - NTP time synchronization verification
@@ -38,7 +39,7 @@ It was developed based on DJI's official requirements and practical experience a
 Runs all environment checks without modifying the system.
 
 ```bash
-sudo ./setup_fh2VER5.3.sh --check-only
+sudo ./setup_fh2VER5.3.1.sh --check-only
 ```
 
 In this mode, the script:
@@ -65,7 +66,7 @@ In this mode, the script:
 ## 2. Prepare the Environment
 
 ```bash
-sudo ./setup_fh2VER5.3.sh
+sudo ./setup_fh2VER5.3.1.sh
 ```
 
 In addition to validating the system, the script automatically prepares the operating system for a FlightHub 2 On-Premises installation.
@@ -75,7 +76,7 @@ In addition to validating the system, the script automatically prepares the oper
 ## 3. Prepare the Environment and Reboot Automatically
 
 ```bash
-sudo ./setup_fh2VER5.3.sh --reboot
+sudo ./setup_fh2VER5.3.1.sh --reboot
 ```
 
 Performs the complete environment preparation and automatically reboots the server when finished.
@@ -172,17 +173,37 @@ This recommendation ensures sufficient space for:
 - reconstruction results;
 - future system growth.
 
+Version 5.3.1 also improves physical disk detection on systems where `lsblk` displays tree-drawing characters, preventing errors such as:
+
+```text
+lsblk: /dev/└─sda: not a block device
+```
+
 ---
 
 ## Docker
 
-The script validates the installed Docker version.
+The script validates the exact versions of Docker Engine, Docker Compose, and containerd.
 
-Recommended version:
+Approved versions:
 
+```text
+Docker Engine 27.2.0
+Docker Compose 2.29.2
+containerd 1.7.21
 ```
-Docker 27
-```
+
+After installing and validating these versions, the script locks the following APT packages using `apt-mark hold`:
+
+- `docker-ce`
+- `docker-ce-cli`
+- `docker-buildx-plugin`
+- `docker-compose-plugin`
+- `containerd.io`
+
+The lock is applied only when all installed versions match the approved package. If any version differs, the script displays the expected and detected versions and stops the preparation process. This prevents an incorrect Docker installation from being locked.
+
+The package lock prevents routine commands such as `apt upgrade` and `apt full-upgrade` from automatically changing the Docker versions required by FlightHub 2 On-Premises.
 
 **Docker 29 is not supported.**
 
@@ -252,7 +273,8 @@ When executed **without** the `--check-only` option, the script may:
 - Update Ubuntu packages;
 - Repair broken APT dependencies;
 - Install required utilities;
-- Install or replace Docker with the recommended version;
+- Install or replace Docker Engine, Docker Compose, and containerd with the approved versions;
+- Lock the validated Docker packages to prevent automatic upgrades;
 - Install and configure Google Chrome (`--no-sandbox`);
 - Install the recommended NVIDIA driver;
 - Configure the system locale to `en_US.UTF-8`;
@@ -280,6 +302,7 @@ At the end of execution, the script displays a summary containing:
 - DNS status;
 - Firewall status;
 - Docker status;
+- Docker version lock status;
 - Google Chrome status;
 - Directory creation status.
 
@@ -292,19 +315,19 @@ This report allows administrators to quickly identify any requirement that must 
 Before starting any FlightHub 2 On-Premises deployment:
 
 ```bash
-sudo ./setup_fh2VER5.3.sh --check-only
+sudo ./setup_fh2VER5.3.1.sh --check-only
 ```
 
 After resolving every issue reported:
 
 ```bash
-sudo ./setup_fh2VER5.3.sh
+sudo ./setup_fh2VER5.3.1.sh
 ```
 
 If you want the server to reboot automatically after the preparation is completed:
 
 ```bash
-sudo ./setup_fh2VER5.3.sh --reboot
+sudo ./setup_fh2VER5.3.1.sh --reboot
 ```
 
 ---
