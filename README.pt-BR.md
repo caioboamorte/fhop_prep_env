@@ -66,7 +66,7 @@ Neste modo o script:
 ## 2. Preparar o ambiente
 
 ```bash
-sudo ./setup_fh2VER5.3.1.sh
+sudo ./fh2-onprem-prep-tool.sh
 ```
 
 Além das verificações, o script realiza automaticamente toda a preparação necessária para instalação do FlightHub 2 On-Premises.
@@ -76,7 +76,7 @@ Além das verificações, o script realiza automaticamente toda a preparação n
 ## 3. Preparar o ambiente e reiniciar automaticamente
 
 ```bash
-sudo ./setup_fh2VER5.3.1.sh --reboot
+sudo ./fh2-onprem-prep-tool.sh --reboot
 ```
 
 Executa toda a preparação e reinicia automaticamente o servidor ao final da execução.
@@ -313,19 +313,19 @@ Esse relatório permite identificar rapidamente qualquer requisito que ainda pre
 Antes de iniciar qualquer instalação do FlightHub 2 On-Premises:
 
 ```bash
-sudo ./setup_fh2VER5.3.1.sh --check-only
+sudo ./fh2-onprem-prep-tool.sh --check-only
 ```
 
 Após corrigir todos os itens apontados pelo relatório:
 
 ```bash
-sudo ./setup_fh2VER5.3.1.sh
+sudo ./fh2-onprem-prep-tool.sh
 ```
 
 Caso deseje que o servidor seja reiniciado automaticamente ao final da preparação:
 
 ```bash
-sudo ./setup_fh2VER5.3.1.sh --reboot
+sudo ./fh2-onprem-prep-tool.sh --reboot
 ```
 
 ---
