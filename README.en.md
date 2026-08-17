@@ -39,7 +39,7 @@ It was developed based on DJI's official requirements and practical experience a
 Runs all environment checks without modifying the system.
 
 ```bash
-sudo ./setup_fh2VER5.3.1.sh --check-only
+sudo ./fh2-onprem-prep-tool.sh --check-only
 ```
 
 In this mode, the script:
@@ -66,7 +66,7 @@ In this mode, the script:
 ## 2. Prepare the Environment
 
 ```bash
-sudo ./setup_fh2VER5.3.1.sh
+sudo ./fh2-onprem-prep-tool.sh
 ```
 
 In addition to validating the system, the script automatically prepares the operating system for a FlightHub 2 On-Premises installation.
@@ -76,7 +76,7 @@ In addition to validating the system, the script automatically prepares the oper
 ## 3. Prepare the Environment and Reboot Automatically
 
 ```bash
-sudo ./setup_fh2VER5.3.1.sh --reboot
+sudo ./fh2-onprem-prep-tool.sh --reboot
 ```
 
 Performs the complete environment preparation and automatically reboots the server when finished.
@@ -315,19 +315,19 @@ This report allows administrators to quickly identify any requirement that must 
 Before starting any FlightHub 2 On-Premises deployment:
 
 ```bash
-sudo ./setup_fh2VER5.3.1.sh --check-only
+sudo ./fh2-onprem-prep-tool.sh --check-only
 ```
 
 After resolving every issue reported:
 
 ```bash
-sudo ./setup_fh2VER5.3.1.sh
+sudo ./fh2-onprem-prep-tool.sh
 ```
 
 If you want the server to reboot automatically after the preparation is completed:
 
 ```bash
-sudo ./setup_fh2VER5.3.1.sh --reboot
+sudo ./fh2-onprem-prep-tool.sh --reboot
 ```
 
 ---
