@@ -5,6 +5,7 @@ REBOOT_AFTER_INSTALL=0
 CHECK_ONLY=0
 CPU_ERROR=0
 DOCKER_HOLD_STATUS="Nao aplicado"
+TEMP_DOCKER_HOLDS=()
 
 EXPECTED_DOCKER_VERSION="27.2.0"
 EXPECTED_COMPOSE_VERSION="2.29.2"
@@ -21,7 +22,7 @@ for arg in "$@"; do
     --help|-h)
       cat <<'EOF'
 Uso:
-  sudo ./setup_fh2VER5.3.sh [--check-only] [--reboot]
+  sudo ./setup_fh2VER5.4.sh [--check-only] [--reboot]
 
 Opcoes:
   --check-only  Executa apenas as verificacoes, sem instalar, atualizar ou alterar o sistema.
@@ -140,6 +141,78 @@ update_system_packages() {
 
 check_command() {
   command -v "$1" >/dev/null 2>&1
+}
+
+protect_existing_docker_packages() {
+  local pkg status
+  local -a docker_packages=(
+    containerd.io
+    docker-ce
+    docker-ce-cli
+    docker-buildx-plugin
+    docker-compose-plugin
+    docker.io
+    containerd
+    runc
+    docker-compose
+    docker-compose-v2
+  )
+
+  TEMP_DOCKER_HOLDS=()
+
+  log "Protegendo Docker durante a atualizacao do sistema"
+
+  for pkg in "${docker_packages[@]}"; do
+    status="$(dpkg-query -W -f='${db:Status-Abbrev}' "$pkg" 2>/dev/null || true)"
+
+    if [[ "$status" != "ii " ]]; then
+      continue
+    fi
+
+    # Se o pacote ja estava em hold antes do script, preserva esse estado
+    # e nao o adiciona a lista de holds temporarios.
+    if apt-mark showhold | grep -Fxq "$pkg"; then
+      echo "Pacote ja estava bloqueado e sera preservado: $pkg"
+      continue
+    fi
+
+    run_sudo apt-mark hold "$pkg"
+    TEMP_DOCKER_HOLDS+=("$pkg")
+    echo "Bloqueio temporario aplicado: $pkg"
+  done
+
+  if [[ "${#TEMP_DOCKER_HOLDS[@]}" -eq 0 ]]; then
+    info "Nenhum pacote Docker precisou de bloqueio temporario."
+  else
+    info "Os pacotes Docker acima nao serao alterados pelo apt upgrade ou por reparos de dependencias."
+  fi
+}
+
+release_docker_holds_for_install() {
+  local pkg
+  local -a docker_packages=(
+    containerd.io
+    docker-ce
+    docker-ce-cli
+    docker-buildx-plugin
+    docker-compose-plugin
+    docker.io
+    containerd
+    runc
+    docker-compose
+    docker-compose-v2
+  )
+
+  log "Liberando pacotes Docker para a instalacao explicita"
+
+  for pkg in "${docker_packages[@]}"; do
+    if apt-mark showhold | grep -Fxq "$pkg"; then
+      run_sudo apt-mark unhold "$pkg"
+      echo "Bloqueio removido para permitir a instalacao: $pkg"
+    fi
+  done
+
+  TEMP_DOCKER_HOLDS=()
 }
 
 hold_docker_packages() {
@@ -316,11 +389,19 @@ install_recommended_docker() {
     echo "Desinstalador localizado em: $uninstall_script"
     run_sudo chmod +x "$uninstall_script"
 
+    # O usuario ja confirmou explicitamente a substituicao e todos os
+    # arquivos necessarios foram validados. So agora o Docker e liberado.
+    release_docker_holds_for_install
+
     log "Desinstalando Docker existente"
     (
       cd "$(dirname "$uninstall_script")"
       run_sudo ./uninstall_docker.sh
     )
+  else
+    # Nao havia Docker/Compose detectado, mas libera qualquer pacote Docker
+    # eventualmente bloqueado antes da instalacao explicita.
+    release_docker_holds_for_install
   fi
 
   log "Instalando Docker recomendado"
@@ -558,6 +639,7 @@ else
 fi
 
 if [[ "$CHECK_ONLY" -eq 0 ]]; then
+  protect_existing_docker_packages
   update_system_packages
 
   log "Instalando utilitarios necessarios"
@@ -710,6 +792,26 @@ else
   DIRECTORIES_STATUS="Criadas"
 fi
 
+# Verificar/instalar Google Chrome antes do resumo final
+if [[ "$CHECK_ONLY" -eq 1 ]]; then
+  log "Verificando Google Chrome sem instalar"
+
+  if check_command google-chrome-stable; then
+    CHROME_VERSION="$(google-chrome-stable --version 2>/dev/null || echo 'Versao nao identificada')"
+    CHROME_STATUS="Instalado"
+  elif [[ -x /usr/bin/google-chrome ]]; then
+    CHROME_VERSION="$(/usr/bin/google-chrome --version 2>/dev/null || echo 'Versao nao identificada')"
+    CHROME_STATUS="Instalado"
+  else
+    CHROME_STATUS="Nao instalado"
+    CHROME_VERSION="Nao identificado"
+  fi
+
+  info "Modo de verificacao: o Chrome nao sera baixado, instalado ou configurado."
+else
+  install_google_chrome
+fi
+
 echo
 echo "=============================="
 echo " FlightHub 2 OP Pre-Check"
@@ -734,26 +836,6 @@ echo "Chrome versao...... $CHROME_VERSION"
 echo "Pastas............. $DIRECTORIES_STATUS"
 echo "=============================="
 echo
-
-if [[ "$CHECK_ONLY" -eq 1 ]]; then
-  log "Verificando Google Chrome sem instalar"
-  if check_command google-chrome-stable; then
-    CHROME_VERSION="$(google-chrome-stable --version 2>/dev/null || echo 'Versao nao identificada')"
-    CHROME_STATUS="Instalado"
-  elif [[ -x /usr/bin/google-chrome ]]; then
-    CHROME_VERSION="$(/usr/bin/google-chrome --version 2>/dev/null || echo 'Versao nao identificada')"
-    CHROME_STATUS="Instalado"
-  else
-    CHROME_STATUS="Nao instalado"
-    CHROME_VERSION="Nao identificado"
-  fi
-  info "Modo de verificacao: o Chrome nao sera baixado, instalado ou configurado."
-else
-  install_google_chrome
-fi
-
-echo "Chrome............. $CHROME_STATUS"
-echo "Chrome versao...... $CHROME_VERSION"
 
 if [[ "$CHECK_ONLY" -eq 1 ]]; then
   echo
