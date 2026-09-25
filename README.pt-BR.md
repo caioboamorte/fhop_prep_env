@@ -39,7 +39,7 @@ Ele foi desenvolvido com base nos requisitos oficiais da DJI e na experiência p
 Executa todas as verificações sem alterar o sistema.
 
 ```bash
-sudo ./setup_fh2VER5.3.1.sh --check-only
+sudo ./fh2-onprem-prep-tool.sh --check-only
 ```
 
 Neste modo o script:
