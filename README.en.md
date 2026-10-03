@@ -6,6 +6,59 @@ It was developed based on DJI's official requirements and practical experience a
 
 ---
 
+# Latest release and download
+
+The latest release is **[v5.4.1](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.4.1)**, published on **2026-09-25**.
+
+Download the release attachment: **[fh2-onprem-prep-tool-v5.4.1.tar.gz](https://github.com/caioboamorte/fhop_prep_env/releases/download/v5.4.1/fh2-onprem-prep-tool-v5.4.1.tar.gz)**.
+
+**Release/source mismatch:** `fh2-onprem-prep-tool.sh` on `main` and at tag `v5.4.1` does not yet include the `iptables` fixes described in the v5.4.1 notes. The changes below distinguish release-note statements from the inspected source behavior. The release archive contents were not validated during this review.
+
+## Changes in v5.4.1
+
+According to the [release notes](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.4.1):
+
+- Added `iptables` to the packages installed before Docker.
+- Validates the installation state of `iptables` and its version command. Preparation stops before Docker installation if validation fails.
+- Checks `iptables`, `docker-ce`, `docker-ce-cli`, and `containerd.io` after installation. All must report `install ok installed` before version validation and locking.
+- Stops execution if any of these packages are missing or incompletely configured.
+- Initializes version variables to prevent unbound-variable errors when a component is not detected.
+
+The notes report a successful Bash syntax check and simulated tests of different `iptables` states. A full Docker installation was not tested in the environment used for that validation.
+
+## Changes in v5.4
+
+According to the [v5.4 release notes](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.4), also confirmed in the `main` source:
+
+- Protects installed Docker packages with `apt-mark hold` before Ubuntu updates and dependency-repair attempts.
+- Unlocks packages in the dedicated installation step, after the user confirms replacement of an existing Docker installation and the required files are verified.
+- Keeps the locks when the user chooses to preserve the current installation.
+- Reapplies the lock after installation and validation of the expected versions.
+- Checks and configures Chrome before the final report, which includes its status and version.
+
+# Download and file preparation
+
+Download and extract the release attachment:
+
+```bash
+curl -fL --retry 3 \
+  "https://github.com/caioboamorte/fhop_prep_env/releases/download/v5.4.1/fh2-onprem-prep-tool-v5.4.1.tar.gz" \
+  -o fh2-onprem-prep-tool-v5.4.1.tar.gz
+
+mkdir -p fh2-prep-v5.4.1
+tar -xzf fh2-onprem-prep-tool-v5.4.1.tar.gz -C fh2-prep-v5.4.1
+cd fh2-prep-v5.4.1
+find . -maxdepth 5 -type f -name '*.sh'
+```
+
+Enter the extracted main script's directory and use its actual filename in the execution commands. The examples below use `fh2-onprem-prep-tool.sh`, the filename in the repository.
+
+To install or replace Docker, keep **`docker.tar.gz` in the same directory as the main script**. It must contain `install_docker.sh` and, when replacing an existing installation, `uninstall_docker.sh`. After extraction, the script searches for these files up to five levels below its own directory.
+
+The repository stores `docker.tar.gz` with **Git LFS**. A small file containing `version https://git-lfs.github.com/spec/v1` is only a pointer, not the installable archive. When using a Git clone, retrieve the LFS content; use the release attachment for the published distribution.
+
+---
+
 # Features
 
 - Ubuntu compatibility verification
@@ -13,7 +66,8 @@ It was developed based on DJI's official requirements and practical experience a
 - RAM validation
 - Storage validation
 - NVIDIA GPU detection
-- Exact Docker Engine, Docker Compose, and containerd version validation
+- Docker package protection before Ubuntu updates
+- Exact Docker Engine, Docker Compose, and containerd version validation after installing the recommended package
 - Automatic Docker package version locking after successful validation
 - Google Chrome installation and configuration
 - Internet and DNS connectivity verification
@@ -27,16 +81,24 @@ It was developed based on DJI's official requirements and practical experience a
 
 # Supported Operating Systems
 
-- Ubuntu Server 22.04 LTS
-- Ubuntu Server 24.04 LTS
+- Ubuntu 22.04 LTS
+- Ubuntu 24.04 LTS
+
+The code checks the distribution and version in `/etc/os-release`; it does not distinguish Server from Desktop.
 
 ---
 
 # Execution Modes
 
+Before the first execution, from the script directory:
+
+```bash
+chmod +x fh2-onprem-prep-tool.sh
+```
+
 ## 1. Verification Only (Recommended)
 
-Runs all environment checks without modifying the system.
+Runs the available checks without modifying the system.
 
 ```bash
 sudo ./fh2-onprem-prep-tool.sh --check-only
@@ -44,7 +106,7 @@ sudo ./fh2-onprem-prep-tool.sh --check-only
 
 In this mode, the script:
 
-- validates all installation requirements;
+- checks the items implemented in the script using the tools already available;
 - generates a complete environment report.
 
 **No changes are made**, including:
@@ -62,6 +124,8 @@ In this mode, the script:
 - system reboot.
 
 ---
+
+The `--check-only` mode does not validate all three exact Docker component versions or confirm existing APT locks. It detects the Docker major version and Compose availability. If `--reboot` is also supplied, reboot is ignored.
 
 ## 2. Prepare the Environment
 
@@ -173,6 +237,8 @@ This recommendation ensures sufficient space for:
 - reconstruction results;
 - future system growth.
 
+In the inspected source, capacity is calculated by dividing bytes by `1024³` and compared with `1000`; a commercial 1 TB disk (approximately 931 GiB) may therefore be flagged as below the minimum. Free space is checked on `/` with `df -BG`, using a threshold of 300.
+
 Version 5.3.1 also improves physical disk detection on systems where `lsblk` displays tree-drawing characters, preventing errors such as:
 
 ```text
@@ -183,7 +249,9 @@ lsblk: /dev/└─sda: not a block device
 
 ## Docker
 
-The script validates the exact versions of Docker Engine, Docker Compose, and containerd.
+During normal preparation, installed Docker packages are protected before `apt upgrade` and dependency repairs. Existing locks are preserved at this stage. If Docker or Compose is already present, replacement requires confirmation; the default answer keeps the current installation.
+
+When keeping the existing Docker installation, package locks remain, but the script does not perform the exact three-component version check. After installing the recommended package, it validates the exact versions of Docker Engine, Docker Compose, and containerd.
 
 Approved versions:
 
@@ -306,7 +374,7 @@ At the end of execution, the script displays a summary containing:
 - Google Chrome status;
 - Directory creation status.
 
-This report allows administrators to quickly identify any requirement that must be addressed before proceeding with the FlightHub 2 installation.
+Also review each step's messages. In the current source, Internet and DNS appear as `OK` in the summary even after a failed check if execution continues; virtualization remains `Nao verificada` (not checked). The report is not a complete environment certification.
 
 ---
 
@@ -332,7 +400,7 @@ sudo ./fh2-onprem-prep-tool.sh --reboot
 
 ---
 
-# License
+# About the project
 
 This script was developed to simplify the preparation of Ubuntu environments for **DJI FlightHub 2 On-Premises** deployments.
 
