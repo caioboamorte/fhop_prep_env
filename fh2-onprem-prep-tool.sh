@@ -259,7 +259,8 @@ hold_docker_packages() {
 install_recommended_docker() {
   local script_dir docker_archive install_script uninstall_script docker_scripts_dir
   local docker_detected=0 compose_detected=0 response
-  local installed_docker_version installed_compose_version installed_containerd_version
+  local installed_docker_version="" installed_compose_version="" installed_containerd_version=""
+  local pkg package_status
 
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   docker_archive="$script_dir/docker.tar.gz"
@@ -409,6 +410,17 @@ install_recommended_docker() {
     cd "$docker_scripts_dir"
     run_sudo ./install_docker.sh
   )
+
+  # Um binario disponivel nao garante que o pacote concluiu a configuracao.
+  for pkg in iptables docker-ce docker-ce-cli containerd.io; do
+    package_status="$(dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null || true)"
+    if [[ "$package_status" != "install ok installed" ]]; then
+      DOCKER_STATUS="Instalacao incompleta: $pkg"
+      echo "ERRO: O pacote $pkg nao esta completamente instalado e configurado."
+      echo "Estado detectado: ${package_status:-pacote ausente}"
+      return 1
+    fi
+  done
 
   echo "Versoes instaladas:"
   if check_command docker; then
@@ -643,7 +655,16 @@ if [[ "$CHECK_ONLY" -eq 0 ]]; then
   update_system_packages
 
   log "Instalando utilitarios necessarios"
-  run_sudo apt install -y pciutils ubuntu-drivers-common curl ca-certificates iputils-ping
+  run_sudo apt install -y pciutils ubuntu-drivers-common curl ca-certificates iputils-ping iptables
+
+  log "Validando dependencia iptables do Docker"
+  IPTABLES_PACKAGE_STATUS="$(dpkg-query -W -f='${Status}' iptables 2>/dev/null || true)"
+  if [[ "$IPTABLES_PACKAGE_STATUS" != "install ok installed" ]] || \
+     ! run_sudo iptables --version; then
+    echo "ERRO: iptables nao foi instalado/configurado corretamente."
+    echo "A preparacao foi interrompida antes da instalacao do Docker."
+    exit 1
+  fi
 else
   log "Ignorando atualizacao e instalacao de pacotes"
   info "Modo de verificacao ativo: apt update, apt upgrade e instalacao de utilitarios nao serao executados."
