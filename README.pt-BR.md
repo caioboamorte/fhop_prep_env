@@ -12,7 +12,9 @@ A release mais recente é a **[v5.4.1](https://github.com/caioboamorte/fhop_prep
 
 Baixe o pacote anexado à release: **[fh2-onprem-prep-tool-v5.4.1.tar.gz](https://github.com/caioboamorte/fhop_prep_env/releases/download/v5.4.1/fh2-onprem-prep-tool-v5.4.1.tar.gz)**.
 
-**Código atualizado na `main`:** o arquivo `fh2-onprem-prep-tool.sh` já contém as correções de `iptables`, a validação do estado dos pacotes e a inicialização das variáveis de versão descritas na v5.4.1. O arquivo disponível na tag `v5.4.1` permanece na versão anterior e não inclui essas correções. A tag e o pacote anexado à release não foram alterados; o conteúdo desse pacote não foi validado nesta revisão.
+**Pacote da release conferido:** o arquivo `fh2-onprem-prep-tool-v5.4.1.tar.gz` contém o script com as correções da 5.4.1, idêntico ao disponível na `main`. A extração cria a pasta `fh2-onprem-prep-tool`, com o script e o `docker.tar.gz` juntos. Essa conferência abrangeu o conteúdo do script e sua sintaxe Bash, sem executar a instalação.
+
+**Sobre a tag:** o código-fonte associado à tag `v5.4.1` ainda contém o script anterior. Para instalar a versão corrigida, utilize o pacote anexado à release indicado acima; os arquivos automáticos `Source code (zip)` e `Source code (tar.gz)` refletem o código da tag.
 
 ## O que mudou na v5.4.1
 
@@ -45,13 +47,21 @@ curl -fL --retry 3 \
   "https://github.com/caioboamorte/fhop_prep_env/releases/download/v5.4.1/fh2-onprem-prep-tool-v5.4.1.tar.gz" \
   -o fh2-onprem-prep-tool-v5.4.1.tar.gz
 
-mkdir -p fh2-prep-v5.4.1
-tar -xzf fh2-onprem-prep-tool-v5.4.1.tar.gz -C fh2-prep-v5.4.1
-cd fh2-prep-v5.4.1
-find . -maxdepth 5 -type f -name '*.sh'
+sudo tar -xzvf fh2-onprem-prep-tool-v5.4.1.tar.gz
+cd fh2-onprem-prep-tool
 ```
 
-Entre na pasta do script principal extraído e utilize o nome real desse arquivo nos comandos de execução. Os exemplos abaixo usam `fh2-onprem-prep-tool.sh`, nome presente no repositório.
+A pasta criada já contém `fh2-onprem-prep-tool.sh` e `docker.tar.gz`. Após o comando `cd` acima, execute a verificação:
+
+```bash
+sudo bash fh2-onprem-prep-tool.sh --check-only
+```
+
+Após conferir os resultados, prepare o ambiente:
+
+```bash
+sudo bash fh2-onprem-prep-tool.sh
+```
 
 Para instalar ou substituir o Docker, mantenha o arquivo **`docker.tar.gz` na mesma pasta do script principal**. Ele deve conter `install_docker.sh` e, para substituir uma instalação existente, `uninstall_docker.sh`. O script procura esses arquivos até cinco níveis abaixo de sua própria pasta após a extração.
 
@@ -90,18 +100,14 @@ O código verifica a distribuição e a versão em `/etc/os-release`, sem difere
 
 # Modos de Execução
 
-Antes da primeira execução, na pasta do script:
-
-```bash
-chmod +x fh2-onprem-prep-tool.sh
-```
+Execute os comandos abaixo dentro da pasta `fh2-onprem-prep-tool`. Com `sudo bash`, não é necessário alterar a permissão de execução do script.
 
 ## 1. Apenas verificar o ambiente (Recomendado)
 
 Executa as verificações disponíveis sem alterar o sistema.
 
 ```bash
-sudo ./fh2-onprem-prep-tool.sh --check-only
+sudo bash fh2-onprem-prep-tool.sh --check-only
 ```
 
 Neste modo o script:
@@ -130,7 +136,7 @@ O modo `--check-only` não valida as três versões exatas do Docker nem confirm
 ## 2. Preparar o ambiente
 
 ```bash
-sudo ./fh2-onprem-prep-tool.sh
+sudo bash fh2-onprem-prep-tool.sh
 ```
 
 Além das verificações, o script realiza automaticamente toda a preparação necessária para instalação do FlightHub 2 On-Premises.
@@ -140,7 +146,7 @@ Além das verificações, o script realiza automaticamente toda a preparação n
 ## 3. Preparar o ambiente e reiniciar automaticamente
 
 ```bash
-sudo ./fh2-onprem-prep-tool.sh --reboot
+sudo bash fh2-onprem-prep-tool.sh --reboot
 ```
 
 Executa toda a preparação e reinicia automaticamente o servidor ao final da execução.
@@ -381,19 +387,19 @@ Consulte também as mensagens de cada etapa. No código atual, Internet e DNS ap
 Antes de iniciar qualquer instalação do FlightHub 2 On-Premises:
 
 ```bash
-sudo ./fh2-onprem-prep-tool.sh --check-only
+sudo bash fh2-onprem-prep-tool.sh --check-only
 ```
 
 Após corrigir todos os itens apontados pelo relatório:
 
 ```bash
-sudo ./fh2-onprem-prep-tool.sh
+sudo bash fh2-onprem-prep-tool.sh
 ```
 
 Caso deseje que o servidor seja reiniciado automaticamente ao final da preparação:
 
 ```bash
-sudo ./fh2-onprem-prep-tool.sh --reboot
+sudo bash fh2-onprem-prep-tool.sh --reboot
 ```
 
 ---
