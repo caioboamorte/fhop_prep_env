@@ -12,11 +12,11 @@ A release mais recente é a **[v5.4.1](https://github.com/caioboamorte/fhop_prep
 
 Baixe o pacote anexado à release: **[fh2-onprem-prep-tool-v5.4.1.tar.gz](https://github.com/caioboamorte/fhop_prep_env/releases/download/v5.4.1/fh2-onprem-prep-tool-v5.4.1.tar.gz)**.
 
-**Divergência entre release e código:** o arquivo `fh2-onprem-prep-tool.sh` disponível na `main` e na tag `v5.4.1` ainda não inclui as correções de `iptables` descritas nas notas da v5.4.1. As alterações abaixo são identificadas conforme a fonte: notas das releases ou comportamento do código consultado. O conteúdo do pacote anexado à release não foi validado nesta revisão.
+**Código atualizado na `main`:** o arquivo `fh2-onprem-prep-tool.sh` já contém as correções de `iptables`, a validação do estado dos pacotes e a inicialização das variáveis de versão descritas na v5.4.1. O arquivo disponível na tag `v5.4.1` permanece na versão anterior e não inclui essas correções. A tag e o pacote anexado à release não foram alterados; o conteúdo desse pacote não foi validado nesta revisão.
 
 ## O que mudou na v5.4.1
 
-Conforme as [notas da release](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.4.1):
+Conforme as [notas da release](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.4.1), também confirmado no código atualizado da `main`:
 
 - Inclusão do `iptables` entre os pacotes instalados antes do Docker.
 - Validação do estado de instalação do `iptables` e do funcionamento de seu comando de versão. Se essa validação falhar, a preparação é interrompida antes da instalação do Docker.
