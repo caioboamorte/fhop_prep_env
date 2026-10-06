@@ -281,6 +281,23 @@ cleanup_local_apt_repo() {
   LOCAL_APT_REPO_DIR=""
 }
 
+install_offline_deb_bundle() {
+  local dir="$1"
+  local description="$2"
+  local primary_pattern="$3"
+  local primary_deb pkg
+
+  [[ -d "$dir" ]] || { warn "Diretorio offline ausente para $description: $dir"; return 1; }
+  primary_deb="$(find "$dir" -maxdepth 1 -type f -name "$primary_pattern" -print -quit)"
+  [[ -n "$primary_deb" ]] || { warn "Pacote principal de $description nao encontrado em $dir ($primary_pattern)."; return 1; }
+
+  pkg="$(deb_package_name "$primary_deb")"
+  [[ -n "$pkg" ]] || { warn "Nao foi possivel identificar o pacote em $primary_deb."; return 1; }
+
+  info "Pacote principal de $description: $pkg ($(basename "$primary_deb"))"
+  install_offline_packages "$dir" "$description" "$pkg"
+}
+
 install_offline_packages() {
   local dir="$1"
   local description="$2"
@@ -542,7 +559,7 @@ install_google_chrome() {
     chrome_real_bin="/usr/bin/google-chrome"
     info "Google Chrome ja instalado. Instalacao ignorada."
   elif [[ "$OFFLINE_MODE" -eq 1 ]]; then
-    install_offline_debs "$OFFLINE_DIR/chrome" "Google Chrome" || { CHROME_STATUS="Pacote offline ausente/incompleto"; fail "Nao foi possivel instalar o Chrome offline."; return 1; }
+    install_offline_deb_bundle "$OFFLINE_DIR/chrome" "Google Chrome" 'google-chrome-stable*.deb' || { CHROME_STATUS="Pacote offline ausente/incompleto"; fail "Nao foi possivel instalar o Chrome offline."; return 1; }
     chrome_real_bin="$(command -v google-chrome-stable 2>/dev/null || true)"
     [[ -n "$chrome_real_bin" ]] || chrome_real_bin="/usr/bin/google-chrome"
   else
