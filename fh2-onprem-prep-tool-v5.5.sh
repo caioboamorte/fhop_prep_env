@@ -265,6 +265,8 @@ create_local_apt_repo() {
   } | run_sudo tee "$repo_dir/Packages" >/dev/null
 
   [[ -s "$repo_dir/Packages" ]] || { run_sudo rm -rf "$repo_dir"; warn "Falha ao gerar indice Packages."; return 1; }
+  run_sudo gzip -9 -c "$repo_dir/Packages" | run_sudo tee "$repo_dir/Packages.gz" >/dev/null
+  [[ -s "$repo_dir/Packages.gz" ]] || { run_sudo rm -rf "$repo_dir"; warn "Falha ao gerar indice Packages.gz."; return 1; }
 
   list_file="$(run_sudo mktemp /tmp/fh2-offline-sources.XXXXXX.list)"
   printf 'deb [trusted=yes] file:%s ./\n' "$repo_dir" | run_sudo tee "$list_file" >/dev/null
@@ -502,7 +504,32 @@ install_recommended_docker() {
 
   [[ "$CHECK_ONLY" -eq 0 ]] || return 0
 
+  if [[ "$docker_detected" -eq 1 ]]; then
+    installed_docker_version="$(docker --version 2>/dev/null | sed -n 's/.*version \([0-9][0-9.]*\).*/\1/p')"
+    if docker compose version >/dev/null 2>&1; then
+      installed_compose_version="$(docker compose version --short 2>/dev/null | sed 's/^v//')"
+    elif check_command docker-compose; then
+      installed_compose_version="$(docker-compose version --short 2>/dev/null | sed 's/^v//')"
+    fi
+    installed_containerd_version="$(containerd --version 2>/dev/null | awk '{print $3}' || true)"
+
+    echo "Docker detectado.... ${installed_docker_version:-desconhecido}"
+    echo "Compose detectado... ${installed_compose_version:-desconhecido}"
+    echo "containerd detectado ${installed_containerd_version:-desconhecido}"
+
+    if [[ "$installed_docker_version" == "$EXPECTED_DOCKER_VERSION" &&
+          "$installed_compose_version" == "$EXPECTED_COMPOSE_VERSION" &&
+          "$installed_containerd_version" == "$EXPECTED_CONTAINERD_VERSION" ]]; then
+      info "Docker, Compose e containerd ja estao exatamente nas versoes homologadas."
+      hold_docker_packages || fail "Nao foi possivel bloquear os pacotes Docker."
+      DOCKER_STATUS="Docker $EXPECTED_DOCKER_VERSION homologado"
+      return 0
+    fi
+  fi
+
   if [[ "$docker_detected" -eq 1 || "$compose_detected" -eq 1 ]]; then
+    warn "As versoes instaladas nao correspondem integralmente ao conjunto homologado."
+    echo "Esperado: Docker $EXPECTED_DOCKER_VERSION, Compose $EXPECTED_COMPOSE_VERSION, containerd $EXPECTED_CONTAINERD_VERSION"
     read -rp "Deseja desinstalar a versao atual e instalar a versao recomendada? [s/N]: " response
     case "$response" in [Ss]|[Ss][Ii][Mm]) ;; *) warn "Docker atual mantido."; return 0 ;; esac
   fi
