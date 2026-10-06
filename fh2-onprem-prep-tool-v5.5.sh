@@ -258,7 +258,7 @@ create_local_apt_repo() {
       sha256="$(sha256sum "$deb" | awk '{print $1}')"
       control="$(dpkg-deb -f "$deb" 2>/dev/null)" || continue
       printf '%s\n' "$control"
-      printf 'Filename: %s\n' "$filename"
+      printf 'Filename: ./%s\n' "$filename"
       printf 'Size: %s\n' "$size"
       printf 'SHA256: %s\n\n' "$sha256"
     done
@@ -302,19 +302,27 @@ install_offline_packages() {
       -o APT::Get::List-Cleanup="0" \
       -o Acquire::Languages="none" \
       -o Acquire::AllowInsecureRepositories="true" \
-      --no-download --no-remove \
       update; then
     cleanup_local_apt_repo
     warn "Falha ao carregar o indice APT local."
     return 1
   fi
 
+  echo "Candidatos disponiveis no repositorio local:"
+  for pkg in "${packages[@]}"; do
+    candidate="$(run_sudo apt-cache \
+      -o Dir::Etc::sourcelist="$LOCAL_APT_SOURCE_LIST" \
+      -o Dir::Etc::sourceparts="-" \
+      policy "$pkg" 2>/dev/null | awk '/Candidate:/ {print $2; exit}')"
+    echo "  - $pkg: ${candidate:-nenhum}"
+  done
+
   if ! run_sudo env DEBIAN_FRONTEND=noninteractive apt-get \
       -o Dir::Etc::sourcelist="$LOCAL_APT_SOURCE_LIST" \
       -o Dir::Etc::sourceparts="-" \
       -o APT::Get::List-Cleanup="0" \
       -o Acquire::Languages="none" \
-      --no-download --no-remove \
+      --no-remove \
       install -y "${packages[@]}"; then
     cleanup_local_apt_repo
     echo
