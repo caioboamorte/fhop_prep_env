@@ -207,12 +207,43 @@ hold_docker_packages() {
   local pkg status
   local -a pkgs=(containerd.io docker-ce docker-ce-cli docker-buildx-plugin docker-compose-plugin)
   local -a installed=()
+  local -a to_hold=()
+  local -a held=()
+
+  mapfile -t held < <(apt-mark showhold 2>/dev/null || true)
+
   for pkg in "${pkgs[@]}"; do
     status="$(dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null || true)"
-    [[ "$status" == "install ok installed" ]] && installed+=("$pkg")
+    if [[ "$status" == *" ok installed" ]]; then
+      installed+=("$pkg")
+      if ! printf '%s\n' "${held[@]}" | grep -Fxq "$pkg"; then
+        to_hold+=("$pkg")
+      fi
+    fi
   done
-  if [[ "${#installed[@]}" -eq 0 ]]; then DOCKER_HOLD_STATUS="Nenhum pacote encontrado"; return 1; fi
-  run_sudo apt-mark hold "${installed[@]}"
+
+  if [[ "${#installed[@]}" -eq 0 ]]; then
+    DOCKER_HOLD_STATUS="Nenhum pacote encontrado"
+    return 1
+  fi
+
+  if [[ "${#to_hold[@]}" -gt 0 ]]; then
+    run_sudo apt-mark hold "${to_hold[@]}" || {
+      DOCKER_HOLD_STATUS="Falha ao aplicar bloqueio"
+      return 1
+    }
+  else
+    info "Todos os pacotes Docker homologados ja estao bloqueados."
+  fi
+
+  mapfile -t held < <(apt-mark showhold 2>/dev/null || true)
+  for pkg in "${installed[@]}"; do
+    if ! printf '%s\n' "${held[@]}" | grep -Fxq "$pkg"; then
+      DOCKER_HOLD_STATUS="Incompleto"
+      return 1
+    fi
+  done
+
   DOCKER_HOLD_STATUS="Ativo (${#installed[@]} pacotes)"
 }
 
