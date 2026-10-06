@@ -234,55 +234,99 @@ package_installed_version() {
   dpkg-query -W -f='${Version}' "$1" 2>/dev/null || true
 }
 
-install_offline_debs() {
+create_local_apt_repo() {
   local dir="$1"
-  local description="$2"
-  local deb pkg candidate installed
-  local -a all_debs=()
-  local -a selected_debs=()
+  local repo_dir list_file deb rel filename size sha256 control
+  local -a debs=()
 
-  [[ -d "$dir" ]] || { warn "Diretorio offline ausente para $description: $dir"; return 1; }
-  mapfile -d '' all_debs < <(find "$dir" -maxdepth 1 -type f -name '*.deb' -print0 | sort -z)
-  [[ "${#all_debs[@]}" -gt 0 ]] || { warn "Nenhum .deb encontrado em $dir"; return 1; }
+  [[ -d "$dir" ]] || { warn "Diretorio offline ausente: $dir"; return 1; }
+  mapfile -d '' debs < <(find "$dir" -maxdepth 1 -type f -name '*.deb' -print0 | sort -z)
+  [[ "${#debs[@]}" -gt 0 ]] || { warn "Nenhum .deb encontrado em $dir"; return 1; }
 
-  for deb in "${all_debs[@]}"; do
-    pkg="$(deb_package_name "$deb")"
-    candidate="$(deb_package_version "$deb")"
-    [[ -n "$pkg" && -n "$candidate" ]] || { warn "Pacote invalido ignorado: $deb"; continue; }
+  repo_dir="$(run_sudo mktemp -d /tmp/fh2-offline-apt.XXXXXX)"
+  run_sudo chmod 755 "$repo_dir"
 
-    installed="$(package_installed_version "$pkg")"
-    if [[ -n "$installed" ]] && dpkg --compare-versions "$installed" ge "$candidate"; then
-      info "$pkg $installed ja atende ao bundle ($candidate)."
-      continue
-    fi
-
-    selected_debs+=("$deb")
+  for deb in "${debs[@]}"; do
+    filename="$(basename "$deb")"
+    run_sudo cp -f "$deb" "$repo_dir/$filename"
   done
 
-  if [[ "${#selected_debs[@]}" -eq 0 ]]; then
-    info "$description: nenhum pacote precisa ser instalado ou atualizado."
-    return 0
-  fi
+  {
+    for deb in "$repo_dir"/*.deb; do
+      filename="$(basename "$deb")"
+      size="$(stat -c '%s' "$deb")"
+      sha256="$(sha256sum "$deb" | awk '{print $1}')"
+      control="$(dpkg-deb -f "$deb" 2>/dev/null)" || continue
+      printf '%s\n' "$control"
+      printf 'Filename: %s\n' "$filename"
+      printf 'Size: %s\n' "$size"
+      printf 'SHA256: %s\n\n' "$sha256"
+    done
+  } | run_sudo tee "$repo_dir/Packages" >/dev/null
 
-  log "Instalando $description a partir do bundle local"
-  echo "Pacotes selecionados: ${#selected_debs[@]} de ${#all_debs[@]}"
-  for deb in "${selected_debs[@]}"; do
-    pkg="$(deb_package_name "$deb")"
-    candidate="$(deb_package_version "$deb")"
-    installed="$(package_installed_version "$pkg")"
-    echo "  - $pkg: ${installed:-nao instalado} -> $candidate"
-  done
+  [[ -s "$repo_dir/Packages" ]] || { run_sudo rm -rf "$repo_dir"; warn "Falha ao gerar indice Packages."; return 1; }
 
-  run_sudo dpkg --configure -a || true
-  if ! run_sudo apt-get --no-download --no-remove install -y "${selected_debs[@]}"; then
-    echo
-    echo "ERRO: Nao foi possivel resolver todas as dependencias usando somente o bundle local."
-    echo "Diretorio: $dir"
-    echo "Nenhum download externo foi permitido."
-    return 1
-  fi
+  list_file="$(run_sudo mktemp /tmp/fh2-offline-sources.XXXXXX.list)"
+  printf 'deb [trusted=yes] file:%s ./\n' "$repo_dir" | run_sudo tee "$list_file" >/dev/null
+
+  LOCAL_APT_REPO_DIR="$repo_dir"
+  LOCAL_APT_SOURCE_LIST="$list_file"
+  info "Repositorio APT local criado com ${#debs[@]} pacotes."
 }
 
+cleanup_local_apt_repo() {
+  [[ -n "${LOCAL_APT_SOURCE_LIST:-}" ]] && run_sudo rm -f "$LOCAL_APT_SOURCE_LIST" || true
+  [[ -n "${LOCAL_APT_REPO_DIR:-}" ]] && run_sudo rm -rf "$LOCAL_APT_REPO_DIR" || true
+  LOCAL_APT_SOURCE_LIST=""
+  LOCAL_APT_REPO_DIR=""
+}
+
+install_offline_packages() {
+  local dir="$1"
+  local description="$2"
+  shift 2
+  local -a packages=("$@")
+
+  [[ "${#packages[@]}" -gt 0 ]] || return 0
+  create_local_apt_repo "$dir" || return 1
+
+  log "Instalando $description pelo repositorio APT local"
+  echo "Pacotes solicitados: ${packages[*]}"
+  echo "O bundle sera usado apenas para resolver estes pacotes e suas dependencias."
+
+  run_sudo dpkg --configure -a || true
+
+  if ! run_sudo apt-get \
+      -o Dir::Etc::sourcelist="$LOCAL_APT_SOURCE_LIST" \
+      -o Dir::Etc::sourceparts="-" \
+      -o APT::Get::List-Cleanup="0" \
+      -o Acquire::Languages="none" \
+      -o Acquire::AllowInsecureRepositories="true" \
+      --no-download --no-remove \
+      update; then
+    cleanup_local_apt_repo
+    warn "Falha ao carregar o indice APT local."
+    return 1
+  fi
+
+  if ! run_sudo env DEBIAN_FRONTEND=noninteractive apt-get \
+      -o Dir::Etc::sourcelist="$LOCAL_APT_SOURCE_LIST" \
+      -o Dir::Etc::sourceparts="-" \
+      -o APT::Get::List-Cleanup="0" \
+      -o Acquire::Languages="none" \
+      --no-download --no-remove \
+      install -y "${packages[@]}"; then
+    cleanup_local_apt_repo
+    echo
+    echo "ERRO: Nao foi possivel instalar os pacotes solicitados usando somente o bundle local."
+    echo "Pacotes: ${packages[*]}"
+    echo "Diretorio: $dir"
+    echo "Nenhum repositorio externo foi habilitado."
+    return 1
+  fi
+
+  cleanup_local_apt_repo
+}
 install_base_dependencies() {
   local -a required=(pciutils ubuntu-drivers-common curl ca-certificates iputils-ping iptables locales)
   local -a missing=()
@@ -299,7 +343,7 @@ install_base_dependencies() {
 
   echo "Pacotes ausentes: ${missing[*]}"
   if [[ "$OFFLINE_MODE" -eq 1 ]]; then
-    install_offline_debs "$OFFLINE_DIR/base" "dependencias base" || fail "Dependencias base offline incompletas."
+    install_offline_packages "$OFFLINE_DIR/base" "dependencias base" "${missing[@]}" || fail "Dependencias base offline incompletas."
     for pkg in "${missing[@]}"; do
       if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "install ok installed"; then
         fail "O pacote obrigatorio $pkg continua ausente apos processar o bundle offline."
@@ -353,11 +397,13 @@ else
   elif [[ "$CHECK_ONLY" -eq 1 ]]; then
     NVIDIA_DRIVER_STATUS="Nao instalado ou nao funcional"
   elif [[ "$OFFLINE_MODE" -eq 1 ]]; then
-    if install_offline_debs "$OFFLINE_DIR/nvidia" "driver NVIDIA"; then
+    warn "Instalacao automatica de driver NVIDIA offline desabilitada nesta revisao por seguranca."
+    warn "O bundle NVIDIA exige selecao especifica por GPU/kernel e nao sera instalado genericamente."
+    if false; then
       NVIDIA_DRIVER_STATUS="Instalado por pacote offline; reinicializacao necessaria"
     else
       NVIDIA_DRIVER_STATUS="Nao instalado"
-      fail "GPU NVIDIA detectada, mas os pacotes locais do driver nao estao disponiveis ou estao incompletos."
+      fail "GPU NVIDIA detectada sem driver funcional. Instale um bundle NVIDIA compativel com esta GPU/kernel antes de prosseguir."
     fi
   else
     if echo "$GPU_NVIDIA" | grep -qiE 'RTX 5000|RTX PRO 5000|RTX 5080'; then
