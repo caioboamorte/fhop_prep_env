@@ -208,8 +208,8 @@ hold_docker_packages() {
   local -a pkgs=(containerd.io docker-ce docker-ce-cli docker-buildx-plugin docker-compose-plugin)
   local -a installed=()
   for pkg in "${pkgs[@]}"; do
-    status="$(dpkg-query -W -f='${db:Status-Abbrev}' "$pkg" 2>/dev/null || true)"
-    [[ "$status" == "ii " ]] && installed+=("$pkg")
+    status="$(dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null || true)"
+    [[ "$status" == "install ok installed" ]] && installed+=("$pkg")
   done
   if [[ "${#installed[@]}" -eq 0 ]]; then DOCKER_HOLD_STATUS="Nenhum pacote encontrado"; return 1; fi
   run_sudo apt-mark hold "${installed[@]}"
