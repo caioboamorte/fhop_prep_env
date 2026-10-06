@@ -26,8 +26,8 @@ Uso:
 Opcoes:
   --check-only             Executa apenas verificacoes, sem alterar o sistema.
   --offline                Executa a preparacao sem utilizar Internet.
-  --offline-dir CAMINHO    Diretorio contendo pacotes .deb para uso offline.
-                           Padrao: ./offline-packages/<versao-do-Ubuntu>
+  --offline-dir CAMINHO    Sobrescreve o diretorio de pacotes offline.
+                           Padrao: ./packages/ubuntu-<versao>
   --reboot                 Reinicia o sistema ao final da preparacao.
   --help, -h               Exibe esta ajuda.
 
@@ -122,13 +122,14 @@ fi
 echo "Ubuntu $VERSION_ID OK"
 
 if [[ "$OFFLINE_MODE" -eq 1 && -z "$OFFLINE_DIR" ]]; then
-  OFFLINE_DIR="$SCRIPT_DIR/offline-packages/$VERSION_ID"
+  OFFLINE_DIR="$SCRIPT_DIR/packages/ubuntu-$VERSION_ID"
 fi
 
 if [[ "$OFFLINE_MODE" -eq 1 ]]; then
   log "MODO OFFLINE"
   echo "O script nao executara apt update, apt upgrade ou downloads pela Internet."
   echo "Pacotes offline: $OFFLINE_DIR"
+  echo "Estrutura esperada: base/, chrome/ e nvidia/"
   if [[ ! -d "$OFFLINE_DIR" ]]; then
     warn "Diretorio de pacotes offline nao encontrado: $OFFLINE_DIR"
     warn "Pacotes ja instalados poderao ser utilizados, mas dependencias ausentes nao poderao ser baixadas."
@@ -221,27 +222,69 @@ repair_apt_online() {
   run_sudo apt --fix-broken install -y || true
 }
 
+deb_package_name() {
+  dpkg-deb -f "$1" Package 2>/dev/null || true
+}
+
+deb_package_version() {
+  dpkg-deb -f "$1" Version 2>/dev/null || true
+}
+
+package_installed_version() {
+  dpkg-query -W -f='${Version}' "$1" 2>/dev/null || true
+}
+
 install_offline_debs() {
   local dir="$1"
   local description="$2"
-  local -a debs=()
+  local deb pkg candidate installed
+  local -a all_debs=()
+  local -a selected_debs=()
 
   [[ -d "$dir" ]] || { warn "Diretorio offline ausente para $description: $dir"; return 1; }
-  mapfile -d '' debs < <(find "$dir" -maxdepth 1 -type f -name '*.deb' -print0 | sort -z)
-  [[ "${#debs[@]}" -gt 0 ]] || { warn "Nenhum .deb encontrado em $dir"; return 1; }
+  mapfile -d '' all_debs < <(find "$dir" -maxdepth 1 -type f -name '*.deb' -print0 | sort -z)
+  [[ "${#all_debs[@]}" -gt 0 ]] || { warn "Nenhum .deb encontrado em $dir"; return 1; }
 
-  log "Instalando $description a partir de pacotes locais"
+  for deb in "${all_debs[@]}"; do
+    pkg="$(deb_package_name "$deb")"
+    candidate="$(deb_package_version "$deb")"
+    [[ -n "$pkg" && -n "$candidate" ]] || { warn "Pacote invalido ignorado: $deb"; continue; }
+
+    installed="$(package_installed_version "$pkg")"
+    if [[ -n "$installed" ]] && dpkg --compare-versions "$installed" ge "$candidate"; then
+      info "$pkg $installed ja atende ao bundle ($candidate)."
+      continue
+    fi
+
+    selected_debs+=("$deb")
+  done
+
+  if [[ "${#selected_debs[@]}" -eq 0 ]]; then
+    info "$description: nenhum pacote precisa ser instalado ou atualizado."
+    return 0
+  fi
+
+  log "Instalando $description a partir do bundle local"
+  echo "Pacotes selecionados: ${#selected_debs[@]} de ${#all_debs[@]}"
+  for deb in "${selected_debs[@]}"; do
+    pkg="$(deb_package_name "$deb")"
+    candidate="$(deb_package_version "$deb")"
+    installed="$(package_installed_version "$pkg")"
+    echo "  - $pkg: ${installed:-nao instalado} -> $candidate"
+  done
+
   run_sudo dpkg --configure -a || true
-  if ! run_sudo apt-get --no-download --no-remove install -y "${debs[@]}"; then
+  if ! run_sudo apt-get --no-download --no-remove install -y "${selected_debs[@]}"; then
     echo
-    echo "ERRO: Nao foi possivel resolver todas as dependencias usando somente os pacotes locais."
-    echo "Inclua os .deb ausentes em: $dir"
+    echo "ERRO: Nao foi possivel resolver todas as dependencias usando somente o bundle local."
+    echo "Diretorio: $dir"
+    echo "Nenhum download externo foi permitido."
     return 1
   fi
 }
 
 install_base_dependencies() {
-  local -a required=(pciutils ubuntu-drivers-common curl ca-certificates iputils-ping iptables)
+  local -a required=(pciutils ubuntu-drivers-common curl ca-certificates iputils-ping iptables locales)
   local -a missing=()
   local pkg
 
@@ -257,6 +300,11 @@ install_base_dependencies() {
   echo "Pacotes ausentes: ${missing[*]}"
   if [[ "$OFFLINE_MODE" -eq 1 ]]; then
     install_offline_debs "$OFFLINE_DIR/base" "dependencias base" || fail "Dependencias base offline incompletas."
+    for pkg in "${missing[@]}"; do
+      if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "install ok installed"; then
+        fail "O pacote obrigatorio $pkg continua ausente apos processar o bundle offline."
+      fi
+    done
   else
     run_sudo apt install -y "${missing[@]}"
   fi
@@ -301,6 +349,7 @@ else
   echo "$GPU_NVIDIA"
   if check_command nvidia-smi && nvidia-smi >/dev/null 2>&1; then
     NVIDIA_DRIVER_STATUS="$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -n1)"
+    info "Driver NVIDIA funcional. Nenhuma alteracao sera realizada."
   elif [[ "$CHECK_ONLY" -eq 1 ]]; then
     NVIDIA_DRIVER_STATUS="Nao instalado ou nao funcional"
   elif [[ "$OFFLINE_MODE" -eq 1 ]]; then
@@ -434,8 +483,10 @@ install_google_chrome() {
   local chrome_real_bin=""
   if check_command google-chrome-stable; then
     chrome_real_bin="$(command -v google-chrome-stable)"
+    info "Google Chrome ja instalado. Instalacao ignorada."
   elif [[ -x /usr/bin/google-chrome ]]; then
     chrome_real_bin="/usr/bin/google-chrome"
+    info "Google Chrome ja instalado. Instalacao ignorada."
   elif [[ "$OFFLINE_MODE" -eq 1 ]]; then
     install_offline_debs "$OFFLINE_DIR/chrome" "Google Chrome" || { CHROME_STATUS="Pacote offline ausente/incompleto"; fail "Nao foi possivel instalar o Chrome offline."; return 1; }
     chrome_real_bin="$(command -v google-chrome-stable 2>/dev/null || true)"
@@ -469,7 +520,7 @@ fi
 
 echo
 echo "=============================="
-echo " FlightHub 2 OP Pre-Check v5.5"
+echo " FlightHub 2 OP Pre-Check v5.5 (Smart Offline Bundle)"
 echo "=============================="
 if [[ "$CHECK_ONLY" -eq 1 ]]; then MODE_STATUS="Somente verificacao"; elif [[ "$OFFLINE_MODE" -eq 1 ]]; then MODE_STATUS="Preparacao offline"; else MODE_STATUS="Preparacao online"; fi
 echo "Modo............... $MODE_STATUS"
