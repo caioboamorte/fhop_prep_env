@@ -21,7 +21,6 @@ A **v5.5** adiciona preparação offline por bundles locais para Ubuntu 22.04 e 
 
 O modo offline isola listas e cache do APT, valida o manifesto `SHA256SUMS`, não executa testes externos de Internet/DNS e não habilita NTP externo. A instalação automática genérica de driver NVIDIA permanece desabilitada no modo offline por depender da combinação GPU/kernel do cliente.
 
-O bundle foi auditado por hash, passou na verificação de sintaxe Bash e teve o Chrome 24.04 validado por resolução estática e simulação APT exclusivamente local. Recomenda-se ainda uma instalação final em VMs mínimas antes da implantação em produção.
 
 ### English
 
@@ -29,6 +28,5 @@ O bundle foi auditado por hash, passou na verificação de sintaxe Bash e teve o
 
 Offline mode isolates APT lists and cache, verifies the `SHA256SUMS` manifest, skips external Internet/DNS tests, and does not enable external NTP. Generic automatic NVIDIA driver installation remains disabled in offline mode because it depends on the customer's GPU/kernel combination.
 
-The bundle was audited by hash, passed Bash syntax validation, and the Ubuntu 24.04 Chrome bundle passed static dependency resolution and an APT simulation using only the local repository. A final installation on minimal VMs is still recommended before production deployment.
 
 [All releases / Todas as releases](https://github.com/caioboamorte/fhop_prep_env/releases)
