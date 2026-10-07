@@ -11,6 +11,9 @@ OFFLINE_DIR=""
 CPU_ERROR=0
 DOCKER_HOLD_STATUS="Nao aplicado"
 TEMP_DOCKER_HOLDS=()
+LOCAL_APT_REPO_DIR=""
+LOCAL_APT_SOURCE_LIST=""
+LOCAL_APT_STATE_DIR=""
 
 EXPECTED_DOCKER_VERSION="27.2.0"
 EXPECTED_COMPOSE_VERSION="2.29.2"
@@ -134,6 +137,26 @@ if [[ "$OFFLINE_MODE" -eq 1 ]]; then
     warn "Diretorio de pacotes offline nao encontrado: $OFFLINE_DIR"
     warn "Pacotes ja instalados poderao ser utilizados, mas dependencias ausentes nao poderao ser baixadas."
   fi
+fi
+
+verify_bundle_integrity() {
+  local manifest="$SCRIPT_DIR/SHA256SUMS"
+
+  if [[ ! -f "$manifest" ]]; then
+    warn "Manifesto SHA256SUMS nao encontrado. A integridade do bundle nao pode ser validada."
+    return 0
+  fi
+
+  log "Verificando integridade do bundle offline"
+  if ! (cd "$SCRIPT_DIR" && sha256sum -c --quiet SHA256SUMS); then
+    echo "ERRO: A verificacao de integridade do bundle falhou."
+    exit 1
+  fi
+  info "Integridade do bundle confirmada pelo SHA256SUMS."
+}
+
+if [[ "$OFFLINE_MODE" -eq 1 ]]; then
+  verify_bundle_integrity
 fi
 
 CPU_MODEL="$(grep -m1 'model name' /proc/cpuinfo | cut -d ':' -f2- | xargs)"
@@ -267,7 +290,7 @@ package_installed_version() {
 
 create_local_apt_repo() {
   local dir="$1"
-  local repo_dir list_file deb rel filename size sha256 control
+  local repo_dir list_file apt_state_dir deb rel filename size sha256 control
   local -a debs=()
 
   [[ -d "$dir" ]] || { warn "Diretorio offline ausente: $dir"; return 1; }
@@ -302,16 +325,22 @@ create_local_apt_repo() {
   list_file="$(run_sudo mktemp /tmp/fh2-offline-sources.XXXXXX.list)"
   printf 'deb [trusted=yes] file:%s ./\n' "$repo_dir" | run_sudo tee "$list_file" >/dev/null
 
+  apt_state_dir="$(run_sudo mktemp -d /tmp/fh2-offline-apt-state.XXXXXX)"
+  run_sudo mkdir -p "$apt_state_dir/lists/partial" "$apt_state_dir/cache/archives/partial"
+
   LOCAL_APT_REPO_DIR="$repo_dir"
   LOCAL_APT_SOURCE_LIST="$list_file"
+  LOCAL_APT_STATE_DIR="$apt_state_dir"
   info "Repositorio APT local criado com ${#debs[@]} pacotes."
 }
 
 cleanup_local_apt_repo() {
   [[ -n "${LOCAL_APT_SOURCE_LIST:-}" ]] && run_sudo rm -f "$LOCAL_APT_SOURCE_LIST" || true
   [[ -n "${LOCAL_APT_REPO_DIR:-}" ]] && run_sudo rm -rf "$LOCAL_APT_REPO_DIR" || true
+  [[ -n "${LOCAL_APT_STATE_DIR:-}" ]] && run_sudo rm -rf "$LOCAL_APT_STATE_DIR" || true
   LOCAL_APT_SOURCE_LIST=""
   LOCAL_APT_REPO_DIR=""
+  LOCAL_APT_STATE_DIR=""
 }
 
 install_offline_deb_bundle() {
@@ -336,9 +365,22 @@ install_offline_packages() {
   local description="$2"
   shift 2
   local -a packages=("$@")
+  local -a apt_options=()
 
   [[ "${#packages[@]}" -gt 0 ]] || return 0
   create_local_apt_repo "$dir" || return 1
+
+  apt_options=(
+    -o "Dir::Etc::sourcelist=$LOCAL_APT_SOURCE_LIST"
+    -o "Dir::Etc::sourceparts=-"
+    -o "Dir::State::lists=$LOCAL_APT_STATE_DIR/lists"
+    -o "Dir::Cache::archives=$LOCAL_APT_STATE_DIR/cache/archives"
+    -o "Dir::Cache::pkgcache=$LOCAL_APT_STATE_DIR/cache/pkgcache.bin"
+    -o "Dir::Cache::srcpkgcache=$LOCAL_APT_STATE_DIR/cache/srcpkgcache.bin"
+    -o "APT::Get::List-Cleanup=0"
+    -o "Acquire::Languages=none"
+    -o "Acquire::AllowInsecureRepositories=true"
+  )
 
   log "Instalando $description pelo repositorio APT local"
   echo "Pacotes solicitados: ${packages[*]}"
@@ -346,13 +388,7 @@ install_offline_packages() {
 
   run_sudo dpkg --configure -a || true
 
-  if ! run_sudo apt-get \
-      -o Dir::Etc::sourcelist="$LOCAL_APT_SOURCE_LIST" \
-      -o Dir::Etc::sourceparts="-" \
-      -o APT::Get::List-Cleanup="0" \
-      -o Acquire::Languages="none" \
-      -o Acquire::AllowInsecureRepositories="true" \
-      update; then
+  if ! run_sudo apt-get "${apt_options[@]}" update; then
     cleanup_local_apt_repo
     warn "Falha ao carregar o indice APT local."
     return 1
@@ -360,18 +396,11 @@ install_offline_packages() {
 
   echo "Candidatos disponiveis no repositorio local:"
   for pkg in "${packages[@]}"; do
-    candidate="$(run_sudo apt-cache \
-      -o Dir::Etc::sourcelist="$LOCAL_APT_SOURCE_LIST" \
-      -o Dir::Etc::sourceparts="-" \
-      policy "$pkg" 2>/dev/null | awk '/Candidate:/ {print $2; exit}')"
+    candidate="$(run_sudo apt-cache "${apt_options[@]}" policy "$pkg" 2>/dev/null | awk '/Candidate:/ {print $2; exit}')"
     echo "  - $pkg: ${candidate:-nenhum}"
   done
 
-  if ! run_sudo env DEBIAN_FRONTEND=noninteractive apt-get \
-      -o Dir::Etc::sourcelist="$LOCAL_APT_SOURCE_LIST" \
-      -o Dir::Etc::sourceparts="-" \
-      -o APT::Get::List-Cleanup="0" \
-      -o Acquire::Languages="none" \
+  if ! run_sudo env DEBIAN_FRONTEND=noninteractive apt-get "${apt_options[@]}" \
       --no-remove \
       install -y "${packages[@]}"; then
     cleanup_local_apt_repo
@@ -566,15 +595,19 @@ install_recommended_docker() {
   fi
 
   [[ -f "$archive" ]] || { fail "Arquivo docker.tar.gz nao encontrado em $SCRIPT_DIR"; return 1; }
+  if tar -tzf "$archive" | grep -Ev '^docker/$|^docker/[^/]+$' | grep -q .; then
+    fail "docker.tar.gz possui uma estrutura inesperada ou insegura."
+    return 1
+  fi
   tar -xzf "$archive" -C "$SCRIPT_DIR"
-  install_script="$(find "$SCRIPT_DIR" -maxdepth 5 -type f -name install_docker.sh -print -quit)"
-  uninstall_script="$(find "$SCRIPT_DIR" -maxdepth 5 -type f -name uninstall_docker.sh -print -quit)"
-  [[ -n "$install_script" ]] || { fail "install_docker.sh nao encontrado."; return 1; }
+  install_script="$SCRIPT_DIR/docker/install_docker.sh"
+  uninstall_script="$SCRIPT_DIR/docker/uninstall_docker.sh"
+  [[ -f "$install_script" ]] || { fail "install_docker.sh nao encontrado em $SCRIPT_DIR/docker/."; return 1; }
   run_sudo chmod +x "$install_script"
 
   release_docker_holds_for_install
   if [[ "$docker_detected" -eq 1 || "$compose_detected" -eq 1 ]]; then
-    [[ -n "$uninstall_script" ]] || { fail "uninstall_docker.sh nao encontrado."; return 1; }
+    [[ -f "$uninstall_script" ]] || { fail "uninstall_docker.sh nao encontrado em $SCRIPT_DIR/docker/."; return 1; }
     run_sudo chmod +x "$uninstall_script"
     (cd "$(dirname "$uninstall_script")" && run_sudo ./uninstall_docker.sh)
   fi

@@ -9,24 +9,26 @@ Validation and preparation of Ubuntu environments for **DJI FlightHub 2 On-Premi
 
 ## Latest release / Versão mais recente
 
-**[v5.4.1](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.4.1)**, published on / publicada em **2026-09-25**.
+**[v5.5](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.5)**, published on / publicada em **2026-10-06**.
 
-[Download / Baixar: fh2-onprem-prep-tool-v5.4.1.tar.gz](https://github.com/caioboamorte/fhop_prep_env/releases/download/v5.4.1/fh2-onprem-prep-tool-v5.4.1.tar.gz)
+[Download / Baixar: fh2-v5.5-bundle.tar.gz](https://github.com/caioboamorte/fhop_prep_env/releases/download/v5.5/fh2-v5.5-bundle.tar.gz)
+
+[SHA-256](https://github.com/caioboamorte/fhop_prep_env/releases/download/v5.5/fh2-v5.5-bundle.tar.gz.sha256): `1a762907e488985dd6d0b2f2f8b3deff6bd800a335c41f70c9ffb230c3b11981`
 
 ### Português
 
-As notas da **v5.4.1** descrevem a instalação e validação do `iptables`, a verificação do estado dos pacotes do Docker e a inicialização das variáveis de versão. A **v5.4** introduziu a proteção dos pacotes Docker antes da atualização do Ubuntu e moveu a verificação do Chrome para antes do resumo final.
+A **v5.5** adiciona preparação offline por bundles locais para Ubuntu 22.04 e 24.04. Dependências base, Docker 27.2.0, Docker Compose 2.29.2, containerd 1.7.21 e Google Chrome 155.0.8059.39 são fornecidos no pacote da release.
 
-**Pacote da release conferido:** o arquivo `fh2-onprem-prep-tool-v5.4.1.tar.gz` contém o script com as correções da 5.4.1, idêntico ao disponível na `main`. A extração cria a pasta `fh2-onprem-prep-tool`, com o script e o `docker.tar.gz` juntos. Essa conferência abrangeu o conteúdo do script e sua sintaxe Bash, sem executar a instalação.
+O modo offline isola listas e cache do APT, valida o manifesto `SHA256SUMS`, não executa testes externos de Internet/DNS e não habilita NTP externo. A instalação automática genérica de driver NVIDIA permanece desabilitada no modo offline por depender da combinação GPU/kernel do cliente.
 
-**Sobre a tag:** o código-fonte associado à tag `v5.4.1` ainda contém o script anterior. Para instalar a versão corrigida, utilize o pacote anexado à release indicado acima; os arquivos automáticos `Source code (zip)` e `Source code (tar.gz)` refletem o código da tag.
+O bundle foi auditado por hash, passou na verificação de sintaxe Bash e teve o Chrome 24.04 validado por resolução estática e simulação APT exclusivamente local. Recomenda-se ainda uma instalação final em VMs mínimas antes da implantação em produção.
 
 ### English
 
-The **v5.4.1** release notes describe `iptables` installation and validation, Docker package-state checks, and version-variable initialization. **v5.4** introduced Docker package protection before Ubuntu updates and moved the Chrome check before the final report.
+**v5.5** adds offline preparation from local bundles for Ubuntu 22.04 and 24.04. Base dependencies, Docker 27.2.0, Docker Compose 2.29.2, containerd 1.7.21, and Google Chrome 155.0.8059.39 are included in the release package.
 
-**Release archive checked:** `fh2-onprem-prep-tool-v5.4.1.tar.gz` contains the script with the v5.4.1 fixes, identical to the one on `main`. Extraction creates the `fh2-onprem-prep-tool` directory with the script and `docker.tar.gz` together. This review checked the script contents and Bash syntax without running the installation.
+Offline mode isolates APT lists and cache, verifies the `SHA256SUMS` manifest, skips external Internet/DNS tests, and does not enable external NTP. Generic automatic NVIDIA driver installation remains disabled in offline mode because it depends on the customer's GPU/kernel combination.
 
-**About the tag:** the source associated with tag `v5.4.1` still contains the earlier script. To install the corrected version, use the release attachment linked above; the automatic `Source code (zip)` and `Source code (tar.gz)` archives reflect the tagged source.
+The bundle was audited by hash, passed Bash syntax validation, and the Ubuntu 24.04 Chrome bundle passed static dependency resolution and an APT simulation using only the local repository. A final installation on minimal VMs is still recommended before production deployment.
 
 [All releases / Todas as releases](https://github.com/caioboamorte/fhop_prep_env/releases)

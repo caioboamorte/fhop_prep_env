@@ -8,13 +8,35 @@ Ele foi desenvolvido com base nos requisitos oficiais da DJI e na experiência p
 
 # Versão mais recente e download
 
-A release mais recente é a **[v5.4.1](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.4.1)**, publicada em **25/09/2026**.
+A release mais recente é a **[v5.5](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.5)**, publicada em **06/10/2026**.
 
-Baixe o pacote anexado à release: **[fh2-onprem-prep-tool-v5.4.1.tar.gz](https://github.com/caioboamorte/fhop_prep_env/releases/download/v5.4.1/fh2-onprem-prep-tool-v5.4.1.tar.gz)**.
+Baixe o pacote anexado à release: **[fh2-v5.5-bundle.tar.gz](https://github.com/caioboamorte/fhop_prep_env/releases/download/v5.5/fh2-v5.5-bundle.tar.gz)**.
 
-**Pacote da release conferido:** o arquivo `fh2-onprem-prep-tool-v5.4.1.tar.gz` contém o script com as correções da 5.4.1, idêntico ao disponível na `main`. A extração cria a pasta `fh2-onprem-prep-tool`, com o script e o `docker.tar.gz` juntos. Essa conferência abrangeu o conteúdo do script e sua sintaxe Bash, sem executar a instalação.
+**Integridade:** o SHA-256 de `fh2-v5.5-bundle.tar.gz` é `1a762907e488985dd6d0b2f2f8b3deff6bd800a335c41f70c9ffb230c3b11981`. O arquivo `.sha256` também está anexado à release.
 
-**Sobre a tag:** o código-fonte associado à tag `v5.4.1` ainda contém o script anterior. Para instalar a versão corrigida, utilize o pacote anexado à release indicado acima; os arquivos automáticos `Source code (zip)` e `Source code (tar.gz)` refletem o código da tag.
+**Pacote da release conferido:** a extração cria `fh2-onprem-prep-tool-v5.5/`, contendo o script v5.5, `docker.tar.gz`, `SHA256SUMS` e os bundles locais para Ubuntu 22.04 e 24.04. O código da tag e o script incluído no pacote correspondem à mesma revisão.
+
+## O que mudou na v5.5
+
+- Adicionado o modo `--offline`, com seleção automática de `packages/ubuntu-$VERSION_ID`.
+- Adicionada a opção `--offline-dir CAMINHO` para bundles armazenados em outro local.
+- Incluídos bundles de dependências base e do Google Chrome para Ubuntu 22.04 e 24.04.
+- O APT offline usa listas e cache temporários isolados, sem participar da resolução com índices externos existentes.
+- O modo offline não executa `apt update`, `apt upgrade`, `apt autoremove`, `apt autoclean`, testes externos de Internet/DNS ou habilitação de NTP externo.
+- Docker Engine 27.2.0, Docker Compose 2.29.2 e containerd 1.7.21 são instalados pelo pacote local e bloqueados com `apt-mark hold` após validação.
+- Google Chrome 155.0.8059.39 é instalado pelo repositório APT local.
+- Adicionada validação de integridade pelo manifesto `SHA256SUMS`.
+- A instalação automática genérica de driver NVIDIA permanece desabilitada no modo offline; uma GPU sem driver funcional exige um bundle compatível com a combinação GPU/kernel.
+- O bundle Docker foi simplificado, removendo uma cópia aninhada redundante dos mesmos pacotes.
+
+### Validações da v5.5
+
+- Sintaxe Bash aprovada.
+- Todos os pacotes `.deb` foram validados por metadados e arquitetura.
+- Bundle base 24.04 confirmado com `locales` e sua cadeia de dependências.
+- Chrome 24.04 validado por fechamento estático e simulação APT usando exclusivamente o repositório local: 196 pacotes instaláveis e zero dependências não resolvidas.
+- Estrutura, permissões, hashes internos e arquivo compactado final conferidos.
+- Uma instalação final do bundle reconstruído em VMs mínimas ainda é recomendada antes da implantação em produção.
 
 ## O que mudou na v5.4.1
 
@@ -44,26 +66,40 @@ Baixe e extraia o pacote da release:
 
 ```bash
 curl -fL --retry 3 \
-  "https://github.com/caioboamorte/fhop_prep_env/releases/download/v5.4.1/fh2-onprem-prep-tool-v5.4.1.tar.gz" \
-  -o fh2-onprem-prep-tool-v5.4.1.tar.gz
+  "https://github.com/caioboamorte/fhop_prep_env/releases/download/v5.5/fh2-v5.5-bundle.tar.gz" \
+  -o fh2-v5.5-bundle.tar.gz
 
-sudo tar -xzvf fh2-onprem-prep-tool-v5.4.1.tar.gz
-cd fh2-onprem-prep-tool
+tar -xzvf fh2-v5.5-bundle.tar.gz
+cd fh2-onprem-prep-tool-v5.5
 ```
 
-A pasta criada já contém `fh2-onprem-prep-tool.sh` e `docker.tar.gz`. Após o comando `cd` acima, execute a verificação:
+A pasta criada já contém `fh2-onprem-prep-tool-v5.5.sh`, `docker.tar.gz`, `SHA256SUMS` e `packages/`. Valide a integridade:
 
 ```bash
-sudo bash fh2-onprem-prep-tool.sh --check-only
+sha256sum -c SHA256SUMS
 ```
 
-Após conferir os resultados, prepare o ambiente:
+Depois execute a verificação:
 
 ```bash
-sudo bash fh2-onprem-prep-tool.sh
+sudo bash fh2-onprem-prep-tool-v5.5.sh --check-only
 ```
 
-Para instalar ou substituir o Docker, mantenha o arquivo **`docker.tar.gz` na mesma pasta do script principal**. Ele deve conter `install_docker.sh` e, para substituir uma instalação existente, `uninstall_docker.sh`. O script procura esses arquivos até cinco níveis abaixo de sua própria pasta após a extração.
+Após conferir os resultados, prepare o ambiente no modo offline:
+
+```bash
+sudo bash fh2-onprem-prep-tool-v5.5.sh --offline
+```
+
+Para informar outro local de pacotes:
+
+```bash
+sudo bash fh2-onprem-prep-tool-v5.5.sh --offline --offline-dir /mnt/usb/fh2-offline
+```
+
+O fluxo online permanece disponível com `sudo bash fh2-onprem-prep-tool-v5.5.sh`.
+
+Para instalar ou substituir o Docker, mantenha **`docker.tar.gz` na mesma pasta do script principal**. O arquivo deve conter `docker/install_docker.sh` e `docker/uninstall_docker.sh`, caminhos validados explicitamente após a extração.
 
 No repositório, `docker.tar.gz` é armazenado com **Git LFS**. Um arquivo pequeno contendo `version https://git-lfs.github.com/spec/v1` é apenas um ponteiro, não o pacote instalável. Ao usar um clone Git, obtenha o conteúdo LFS; para a distribuição publicada, prefira o anexo da release.
 
@@ -86,6 +122,7 @@ No repositório, `docker.tar.gz` é armazenado com **Git LFS**. Um arquivo peque
 - Criação automática da estrutura de diretórios
 - Relatório completo ao final da execução
 - Modo de verificação (sem alterações no sistema)
+- Modo de preparação offline com dependências locais
 
 ---
 
@@ -107,7 +144,7 @@ Execute os comandos abaixo dentro da pasta `fh2-onprem-prep-tool`. Com `sudo bas
 Executa as verificações disponíveis sem alterar o sistema.
 
 ```bash
-sudo bash fh2-onprem-prep-tool.sh --check-only
+sudo bash fh2-onprem-prep-tool-v5.5.sh --check-only
 ```
 
 Neste modo o script:
@@ -136,7 +173,7 @@ O modo `--check-only` não valida as três versões exatas do Docker nem confirm
 ## 2. Preparar o ambiente
 
 ```bash
-sudo bash fh2-onprem-prep-tool.sh
+sudo bash fh2-onprem-prep-tool-v5.5.sh
 ```
 
 Além das verificações, o script realiza automaticamente toda a preparação necessária para instalação do FlightHub 2 On-Premises.
@@ -146,10 +183,20 @@ Além das verificações, o script realiza automaticamente toda a preparação n
 ## 3. Preparar o ambiente e reiniciar automaticamente
 
 ```bash
-sudo bash fh2-onprem-prep-tool.sh --reboot
+sudo bash fh2-onprem-prep-tool-v5.5.sh --reboot
 ```
 
 Executa toda a preparação e reinicia automaticamente o servidor ao final da execução.
+
+---
+
+## 4. Preparar o ambiente sem acesso à Internet
+
+```bash
+sudo bash fh2-onprem-prep-tool-v5.5.sh --offline
+```
+
+O script seleciona automaticamente `packages/ubuntu-22.04` ou `packages/ubuntu-24.04`. Use `--offline-dir CAMINHO` para fornecer outro bundle.
 
 ---
 
@@ -289,17 +336,23 @@ Caso exista uma GPU NVIDIA instalada, o script verifica se o driver está corret
 
 Durante a preparação completa, o driver recomendado é instalado automaticamente quando necessário.
 
+No modo offline, a instalação automática genérica de drivers NVIDIA é deliberadamente desabilitada. Se uma GPU for detectada sem driver funcional, o script interrompe a preparação e solicita um bundle compatível com a GPU e o kernel do cliente.
+
 ---
 
 ## Internet
 
 Verifica se o servidor possui acesso à Internet.
 
+No modo offline, essa verificação externa é ignorada.
+
 ---
 
 ## DNS
 
 Verifica se o servidor consegue resolver nomes de domínio.
+
+No modo offline, essa verificação externa é ignorada.
 
 ---
 
@@ -308,6 +361,8 @@ Verifica se o servidor consegue resolver nomes de domínio.
 Verifica o funcionamento do NTP.
 
 Durante a preparação completa, o NTP é habilitado automaticamente.
+
+No modo offline, NTP externo não é habilitado automaticamente; quando necessário, deve ser usado um servidor NTP interno.
 
 ---
 
@@ -387,19 +442,19 @@ Consulte também as mensagens de cada etapa. No código atual, Internet e DNS ap
 Antes de iniciar qualquer instalação do FlightHub 2 On-Premises:
 
 ```bash
-sudo bash fh2-onprem-prep-tool.sh --check-only
+sudo bash fh2-onprem-prep-tool-v5.5.sh --check-only
 ```
 
 Após corrigir todos os itens apontados pelo relatório:
 
 ```bash
-sudo bash fh2-onprem-prep-tool.sh
+sudo bash fh2-onprem-prep-tool-v5.5.sh
 ```
 
 Caso deseje que o servidor seja reiniciado automaticamente ao final da preparação:
 
 ```bash
-sudo bash fh2-onprem-prep-tool.sh --reboot
+sudo bash fh2-onprem-prep-tool-v5.5.sh --reboot
 ```
 
 ---

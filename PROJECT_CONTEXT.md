@@ -4,7 +4,7 @@
 
 Este repositorio contem a ferramenta de preparacao e pre-check do ambiente para FlightHub 2 On-Premises.
 
-A versao estavel anterior e a v5.4.1. A versao em desenvolvimento e a v5.5, que adiciona suporte a preparacao offline por bundles locais para Ubuntu 22.04 e Ubuntu 24.04.
+A versao estavel anterior e a v5.4.1. A versao atual e a v5.5, que adiciona suporte a preparacao offline por bundles locais para Ubuntu 22.04 e Ubuntu 24.04.
 
 ## Regra de compatibilidade
 
@@ -157,20 +157,38 @@ A v5.5 foi testada em Ubuntu 24.04 com:
 - Chrome 155.0.8059.39;
 - segunda execucao idempotente.
 
-Antes do release final, revisar especificamente se o bundle base de Ubuntu 24.04 contem `locales` e toda a sua cadeia necessaria. Os primeiros bundles 24.04 foram gerados antes de `locales` entrar explicitamente na lista base, e o ambiente de teste ja possuia esse pacote.
+Auditoria final do bundle 24.04:
+
+- 128 pacotes `.deb` no bundle base;
+- `locales` 2.39-0ubuntu8.9 presente com `libc-bin` e `debconf`;
+- 195 dependencias no bundle Chrome;
+- 196 pacotes `.deb` no total, incluindo o Chrome;
+- zero dependencias ausentes na analise estatica;
+- simulacao APT com estado vazio e somente o repositorio local resolveu os 196 pacotes;
+- candidato do Chrome confirmado como 155.0.8059.39-1 amd64.
 
 ## Estado atual
 
-Base + Docker + Chrome estao funcionalmente validados em Ubuntu 22.04 e Ubuntu 24.04.
+Base + Docker + Chrome estao funcionalmente validados em Ubuntu 22.04 e Ubuntu 24.04. A estrutura final foi auditada por nome, metadados, arquitetura e SHA-256.
 
-Pendencias antes de considerar o pacote final:
+Estado do pacote final v5.5:
 
-1. auditar a estrutura completa do bundle;
-2. validar `locales` no bundle base do Ubuntu 24.04;
-3. identificar arquivos auxiliares de geracao/validacao que nao precisam entrar no release;
-4. identificar .deb duplicados ou desnecessarios sem remove-los automaticamente;
-5. manter NVIDIA offline como limitacao conhecida ate existir estrategia especifica;
-6. gerar o pacote final somente depois da auditoria e aprovacao.
+1. estrutura completa auditada;
+2. `locales` e cadeia do Ubuntu 24.04 confirmados;
+3. arquivos auxiliares preservados na arvore de geracao e excluidos do release;
+4. duplicacao aninhada do Docker removida;
+5. APT offline isolado de listas e cache externos;
+6. NVIDIA offline mantido como limitacao conhecida;
+7. bundle final gerado com diretorio raiz unico e permissoes normalizadas;
+8. manifesto interno `SHA256SUMS` validado;
+9. instalacao final em VMs minimas ainda recomendada antes da implantacao em producao.
+
+Artefato publicado:
+
+```text
+fh2-v5.5-bundle.tar.gz
+SHA-256: 1a762907e488985dd6d0b2f2f8b3deff6bd800a335c41f70c9ffb230c3b11981
+```
 
 ## Auditoria do bundle
 
