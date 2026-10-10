@@ -2,6 +2,21 @@
 
 Variante para Ubuntu 22.04 e 24.04 amd64 com Internet. Basta o arquivo .sh: não requer docker.tar.gz nem bundles locais.
 
+## Quando usar e como baixar
+
+Use em servidores com acesso aos repositórios Ubuntu, Docker e Google. Para servidores sem Internet, use a versão com bundle e `--offline`.
+
+Consulte o [guia completo em português](README.pt-BR.md) ou o [guia em inglês](README.en.md) para comparar as duas versões, baixar o bundle e usar as opções disponíveis.
+
+```bash
+curl -fL --retry 3 \
+  "https://raw.githubusercontent.com/caioboamorte/fhop_prep_env/v5.5-online/fh2-onprem-prep-tool-v5.5-online.sh" \
+  -o fh2-onprem-prep-tool-v5.5-online.sh
+
+sudo bash fh2-onprem-prep-tool-v5.5-online.sh --check-only
+sudo bash fh2-onprem-prep-tool-v5.5-online.sh
+```
+
 ## Execução
 
 ```bash
