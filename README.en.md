@@ -106,6 +106,51 @@ sudo bash fh2-onprem-prep-tool-v5.5.sh
 
 Ubuntu dependencies, NVIDIA drivers and Chrome may be downloaded online, but Docker installation/replacement still requires local `docker.tar.gz`. Choose **v5.5 Online** to download Docker as well.
 
+## When is Docker detected, downloaded, installed and locked?
+
+Preparation performs **two different checks**: it first detects installed APT packages to protect them during Ubuntu updates, then reads Docker, Compose and containerd versions to decide whether installation is needed.
+
+| Stage | v5.5 Online | v5.5 bundle |
+| --- | --- | --- |
+| **1. Detect existing packages** | Before Ubuntu updates, queries installed Docker/containerd APT packages. This is not yet exact-version validation. | Same query, including offline mode. |
+| **2. Apply preventive locks** | Applies `apt-mark hold` to installed packages not already held, preventing `apt upgrade` from changing Docker before the user's decision. | Same protection. With `--offline`, general Ubuntu updates are skipped. |
+| **3. Detect and compare versions** | In the Docker/Compose checking step, after GPU, locale, connectivity, NTP and firewall steps, reads Docker, Compose and containerd and compares them with **27.2.0 / 2.29.2 / 1.7.21**. | Same comparison in the Docker step. |
+| **4. Decide whether to install** | If all three match, keeps the installation, applies/confirms locks and ends the Docker step. Existing mismatched Docker or Compose requires confirmation. When no installation is detected, this question is skipped. | Same decision. Declining replacement keeps the existing installation and preventive locks. |
+| **5. Obtain files** | After installation is selected, configures the official repository, resolves exact versions and downloads the five Docker packages **before releasing locks or removing conflicting packages**. | Does not download Docker during execution, even without `--offline`. Validates and extracts local `docker.tar.gz` and checks its installer files. |
+| **6. Unlock and install** | Releases locks for packages handled by the installer, removes conflicting packages when present and installs the downloaded `.deb` files. Additional dependencies are downloaded at this point. Then enables/starts Docker. | Releases locks. Runs the local uninstaller when replacing a detected installation, then runs the local bundle installer. |
+| **7. Validate and apply final locks** | Checks package installation states and the three main versions. After validation, applies `apt-mark hold` to installed Docker packages and confirms the APT holds. | Same validation and final locking. |
+
+### What does “locked” mean?
+
+The preventive lock in stage 2 **does not mean the versions are correct**. It protects the existing installation while Ubuntu is prepared. Final locks are applied/confirmed after checking the expected versions, or when those versions were already installed.
+
+The final lock handles these five packages:
+
+- `docker-ce`
+- `docker-ce-cli`
+- `containerd.io`
+- `docker-compose-plugin`
+- `docker-buildx-plugin`
+
+Exact final version validation covers **Engine, Compose and containerd**. Online installation also selects Buildx **0.16.2** for download; final version validation does not compare Buildx.
+
+Declining an adjustment of mismatched components leaves preventive locks in place, but **does not make the existing installation approved**. Review the Docker step messages and the final Docker status.
+
+### When are download and installation skipped?
+
+If Docker **27.2.0**, Compose **2.29.2** and containerd **1.7.21** already match, the script keeps them and applies/confirms locks. It does not download Docker packages or extract the bundle to reinstall them on this path.
+
+With `--check-only`, no downloads, installations, unlocks or new locks occur. It detects the Docker major version and Compose availability; it does not confirm the three exact versions or APT holds.
+
+To check manually after preparation:
+
+```bash
+docker --version
+docker compose version
+containerd --version
+apt-mark showhold
+```
+
 ## Options and limitations
 
 | Option | v5.5 Online | v5.5 bundle |
