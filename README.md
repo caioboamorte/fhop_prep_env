@@ -11,7 +11,7 @@ Prepare Ubuntu 22.04/24.04 for DJI FlightHub 2 On-Premises.
 
 | Versão / Variant | Quando usar / When to use | Distribuição / Distribution |
 | --- | --- | --- |
-| **v5.5 Online** | Servidor com Internet; baixa todos os componentes, inclusive Docker / Connected server; downloads all components, including Docker | [Script na branch / Branch script](fh2-onprem-prep-tool-v5.5-online.sh), em revisão / under review |
+| **v5.5 Online** | Servidor com Internet; baixa todos os componentes, inclusive Docker / Connected server; downloads all components, including Docker | [Script na branch / Branch script](fh2-onprem-prep-tool-v5.5-online.sh), revisado e testado / reviewed and tested |
 | **v5.5 com bundle / bundle** | Servidor sem Internet; execute com `--offline` / Offline server; run with `--offline` | [Release v5.5](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.5) |
 
 **Online:** basta o arquivo `.sh`; não precisa de `docker.tar.gz`. / Only the `.sh` is needed; no `docker.tar.gz`.
@@ -35,6 +35,6 @@ sudo bash fh2-onprem-prep-tool-v5.5-online.sh
 
 Execute primeiro `--check-only` e confira o relatório. / Run `--check-only` first and review the report.
 
-A variante online ainda não está em release; instalação real está pendente de validação. Acompanhe o [PR #1](https://github.com/caioboamorte/fhop_prep_env/pull/1). / Online has no release yet; real installation testing is pending. Track [PR #1](https://github.com/caioboamorte/fhop_prep_env/pull/1).
+**v5.5 Online pronta para uso:** revisada e testada por Caio em 09/10/2026. Disponível nesta branch; ainda sem release própria. [PR #1](https://github.com/caioboamorte/fhop_prep_env/pull/1). / **v5.5 Online ready for use:** reviewed and tested by Caio on 2026-10-09. Available on this branch; no separate release yet. [PR #1](https://github.com/caioboamorte/fhop_prep_env/pull/1).
 
 Para o passo a passo offline, opções, integridade e requisitos, consulte a documentação acima. / See the guides above for offline steps, options, integrity checks and requirements.
