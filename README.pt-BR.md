@@ -106,6 +106,51 @@ sudo bash fh2-onprem-prep-tool-v5.5.sh
 
 Nesse caso, Ubuntu, dependências, driver NVIDIA e Chrome podem ser baixados online, mas a instalação/substituição do Docker ainda usa o `docker.tar.gz` local. Para baixar também o Docker da Internet, escolha **v5.5 Online**.
 
+## Em que momento o Docker é detectado, baixado, instalado e bloqueado?
+
+A preparação tem **duas verificações diferentes**: primeiro procura pacotes Docker instalados para protegê-los durante a atualização do Ubuntu; depois verifica as versões de Docker, Compose e containerd para decidir se precisa instalar alguma coisa.
+
+| Momento | v5.5 Online | v5.5 com bundle |
+| --- | --- | --- |
+| **1. Detectar pacotes existentes** | Antes da atualização do Ubuntu, consulta os pacotes Docker/containerd instalados pelo APT. Ainda não é a validação das versões exatas. | Mesma consulta, inclusive em modo offline. |
+| **2. Bloquear preventivamente** | Aplica `apt-mark hold` aos pacotes existentes que ainda não estavam bloqueados. Assim, `apt upgrade` não atualiza o Docker antes da decisão do usuário. | Aplica a mesma proteção. Com `--offline`, a atualização geral do Ubuntu é ignorada. |
+| **3. Detectar e comparar versões** | Na etapa “Verificando Docker e Docker Compose”, após as etapas de GPU, locale, conectividade, NTP e firewall, lê Docker, Compose e containerd e compara com **27.2.0 / 2.29.2 / 1.7.21**. | Faz a mesma comparação na etapa do Docker. |
+| **4. Decidir se deve instalar** | Se as três versões já correspondem, mantém a instalação, confirma/aplica os bloqueios e encerra a etapa Docker. Se há Docker ou Compose divergente, pede confirmação. Sem instalação detectada, segue sem essa pergunta. | Mesma decisão. Recusar a substituição mantém o Docker atual e os bloqueios preventivos. |
+| **5. Obter os arquivos** | Após a decisão de instalar, configura o repositório oficial, procura as versões exatas e baixa os cinco pacotes Docker. Isso ocorre **antes de liberar os bloqueios ou remover pacotes conflitantes**. | Não baixa o Docker da Internet durante a execução, nem mesmo sem `--offline`. Valida e extrai o `docker.tar.gz` que já veio no bundle e verifica os instaladores. |
+| **6. Liberar e instalar** | Libera os bloqueios dos pacotes tratados pelo instalador, remove pacotes conflitantes quando presentes e instala os `.deb` baixados. Dependências adicionais são obtidas online nessa etapa. Em seguida, habilita/inicia o serviço Docker. | Libera os bloqueios. Se vai substituir uma instalação detectada, executa o desinstalador local; depois executa o instalador local do bundle. |
+| **7. Validar e bloquear ao final** | Verifica o estado dos pacotes e as três versões principais. Após validação, aplica `apt-mark hold` aos pacotes Docker instalados e confirma os bloqueios no APT. | Faz a mesma validação e o mesmo bloqueio final. |
+
+### O que significa “trancado”?
+
+O bloqueio preventivo do passo 2 **não significa que a versão está correta**. Ele apenas protege a instalação existente enquanto o Ubuntu é preparado. O bloqueio final é aplicado/confirmado depois de verificar o conjunto esperado, ou quando esse conjunto já estava instalado.
+
+Os cinco pacotes tratados pelo bloqueio final são:
+
+- `docker-ce`
+- `docker-ce-cli`
+- `containerd.io`
+- `docker-compose-plugin`
+- `docker-buildx-plugin`
+
+O script confirma a correspondência exata de **Engine, Compose e containerd**; na instalação online, também seleciona Buildx **0.16.2** para download. A verificação final de versões não compara a versão do Buildx.
+
+Se o usuário recusar o ajuste de uma instalação divergente, os bloqueios preventivos permanecem, mas isso **não torna essa instalação homologada**. Confira as mensagens da etapa e o status Docker no resumo.
+
+### Quando não há download nem instalação?
+
+Se Docker **27.2.0**, Compose **2.29.2** e containerd **1.7.21** já estiverem presentes, o script mantém os componentes e aplica/confirma o bloqueio. Não baixa os pacotes Docker nem extrai o bundle para reinstalá-los nesse caminho.
+
+Com `--check-only`, não há download, instalação, liberação ou aplicação de bloqueios. Esse modo identifica a versão principal do Docker e a disponibilidade do Compose; não confirma as três versões exatas nem os bloqueios APT.
+
+Para conferir manualmente depois da preparação:
+
+```bash
+docker --version
+docker compose version
+containerd --version
+apt-mark showhold
+```
+
 ## Opções e limites
 
 | Opção | v5.5 Online | v5.5 com bundle |
