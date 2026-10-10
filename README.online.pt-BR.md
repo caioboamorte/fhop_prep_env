@@ -49,4 +49,6 @@ Veja a [tabela detalhada das duas versões](README.pt-BR.md#em-que-momento-o-doc
 
 ## Validação
 
-Sintaxe bash, --help e seleção exata de versões com dados simulados foram validados. Instalação real, disponibilidade dos pacotes e cenários de upgrade/downgrade ainda precisam de teste em Ubuntu 22.04/24.04. Esta variante está em branch de revisão, sem substituir a versão offline.
+**Pronta para uso.** Caio confirmou a revisão e os testes do script em 09/10/2026. Também foram aprovadas anteriormente as verificações de sintaxe Bash, `--help` e seleção exata de versões com dados simulados.
+
+Disponível na branch `v5.5-online`, ainda sem release própria. A versão com bundle continua disponível para uso offline.
