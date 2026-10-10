@@ -10,7 +10,7 @@ Two variants prepare Ubuntu 22.04/24.04 for DJI FlightHub 2 On-Premises. They va
 | Server has no Internet or external downloads are blocked | **v5.5 bundle**, with `--offline` | Full release bundle: script, `docker.tar.gz`, `SHA256SUMS`, and `packages/` |
 | Bundle is already available and Internet will be used for Ubuntu, Chrome and NVIDIA | **v5.5 bundle**, without `--offline` | Local Docker bundle is still required for Docker installation/replacement |
 
-**v5.5 Online is available on the `v5.5-online` branch, under review in [PR #1](https://github.com/caioboamorte/fhop_prep_env/pull/1), and has no release yet.** The bundle variant is distributed in [release v5.5](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.5). The `-online` suffix identifies the variant that also downloads Docker from the Internet.
+**v5.5 Online is ready for use following Caio's review and testing, confirmed on 2026-10-09. It is available on the `v5.5-online` branch and in [PR #1](https://github.com/caioboamorte/fhop_prep_env/pull/1), with no separate release yet.** The bundle variant is distributed in [release v5.5](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.5). The `-online` suffix identifies the variant that also downloads Docker from the Internet.
 
 ## 1. v5.5 Online: download and run
 
@@ -167,7 +167,7 @@ Preparation may set locale `en_US.UTF-8`, timezone `America/Sao_Paulo`, disable 
 
 ## Validation status
 
-Online Bash syntax, help and exact-version selection with simulated data passed. Real installation, package availability and upgrade/downgrade still require Ubuntu 22.04/24.04 testing.
+**v5.5 Online: ready for use.** Caio confirmed script review and testing on 2026-10-09, in addition to the previous Bash syntax, help and simulated exact-version selection checks. The specific test environment and scenarios were not detailed in this record.
 
 The [v5.5 release notes](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.5) document bundle validation, including package metadata, hashes and an offline APT simulation for Chrome on Ubuntu 24.04. Final installation on minimal VMs is also recommended before production.
 
