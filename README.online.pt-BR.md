@@ -34,6 +34,19 @@ Docker existente é protegido durante apt upgrade. Se as três versões principa
 
 Mantém a preparação da versão base: verificações de hardware, atualização Ubuntu, locale, timezone, NTP, desativação UFW, criação das pastas e configuração Chrome com --no-sandbox. Não instala o FlightHub 2 nem o Terra.
 
+## Sequência da etapa Docker
+
+1. Antes de atualizar o Ubuntu, detecta os pacotes instalados e aplica bloqueios preventivos.
+2. Na etapa Docker, lê as três versões principais e compara com o conjunto esperado.
+3. Se já estiverem corretas, mantém os componentes e aplica/confirma os bloqueios. Caso contrário, pede confirmação quando há uma instalação detectada.
+4. Após decidir instalar, procura as versões exatas e baixa os cinco pacotes, ainda com os bloqueios existentes.
+5. Libera os bloqueios, remove conflitos, instala os pacotes e inicia o Docker.
+6. Valida os pacotes e as versões de Engine, Compose e containerd, aplica o bloqueio final e confirma os holds.
+
+O bloqueio preventivo protege o Docker existente; não comprova que suas versões estão corretas. Com `--check-only`, nenhuma dessas alterações ocorre.
+
+Veja a [tabela detalhada das duas versões](README.pt-BR.md#em-que-momento-o-docker-é-detectado-baixado-instalado-e-bloqueado).
+
 ## Validação
 
 Sintaxe bash, --help e seleção exata de versões com dados simulados foram validados. Instalação real, disponibilidade dos pacotes e cenários de upgrade/downgrade ainda precisam de teste em Ubuntu 22.04/24.04. Esta variante está em branch de revisão, sem substituir a versão offline.
