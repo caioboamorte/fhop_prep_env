@@ -10,7 +10,7 @@ Consulte o [guia completo em português](README.pt-BR.md) ou o [guia em inglês]
 
 ```bash
 curl -fL --retry 3 \
-  "https://raw.githubusercontent.com/caioboamorte/fhop_prep_env/v5.5-online/fh2-onprem-prep-tool-v5.5-online.sh" \
+  "https://github.com/caioboamorte/fhop_prep_env/releases/download/v5.5-online/fh2-onprem-prep-tool-v5.5-online.sh" \
   -o fh2-onprem-prep-tool-v5.5-online.sh
 
 sudo bash fh2-onprem-prep-tool-v5.5-online.sh --check-only
@@ -51,4 +51,4 @@ Veja a [tabela detalhada das duas versões](README.pt-BR.md#em-que-momento-o-doc
 
 **Pronta para uso.** Caio confirmou a revisão e os testes do script em 09/10/2026. Também foram aprovadas anteriormente as verificações de sintaxe Bash, `--help` e seleção exata de versões com dados simulados.
 
-Disponível na branch `v5.5-online`, ainda sem release própria. A versão com bundle continua disponível para uso offline.
+Integrada à `main` e disponível na [release v5.5 Online](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.5-online), com anexos `.sh` e `.sha256`. A versão com bundle continua disponível para uso offline.
