@@ -1,109 +1,175 @@
-# FlightHub 2 On-Premises Environment Preparation Script
+# FlightHub 2 On-Premises Environment Preparation
 
-This script automates the validation and preparation of Ubuntu servers for **DJI FlightHub 2 On-Premises (FH2 OP)** deployments.
+Two variants prepare Ubuntu 22.04/24.04 for DJI FlightHub 2 On-Premises. They validate and configure the environment; FlightHub 2 and Terra are installed separately.
 
-It was developed based on DJI's official requirements and practical experience acquired during multiple real-world deployments, helping reduce installation time and prevent common issues before installing FlightHub 2.
+## Which variant should I use?
 
----
+| Situation | Recommended variant | Required files |
+| --- | --- | --- |
+| Server can reach Ubuntu, Docker and Google package sources | **v5.5 Online** | Only `fh2-onprem-prep-tool-v5.5-online.sh` |
+| Server has no Internet or external downloads are blocked | **v5.5 bundle**, with `--offline` | Full release bundle: script, `docker.tar.gz`, `SHA256SUMS`, and `packages/` |
+| Bundle is already available and Internet will be used for Ubuntu, Chrome and NVIDIA | **v5.5 bundle**, without `--offline` | Local Docker bundle is still required for Docker installation/replacement |
 
-# Latest release and download
+**v5.5 Online is ready for use following Caio's review and testing, confirmed on 2026-10-09. It is available on the `v5.5-online` branch and in [PR #1](https://github.com/caioboamorte/fhop_prep_env/pull/1), with no separate release yet.** The bundle variant is distributed in [release v5.5](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.5). The `-online` suffix identifies the variant that also downloads Docker from the Internet.
 
-The latest release is **[v5.5](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.5)**, published on **2026-10-06**.
+## 1. v5.5 Online: download and run
 
-Download the release attachment: **[fh2-v5.5-bundle.tar.gz](https://github.com/caioboamorte/fhop_prep_env/releases/download/v5.5/fh2-v5.5-bundle.tar.gz)**.
+Use this variant when all components can be downloaded on the server. No `docker.tar.gz` or local package bundle is required.
 
-**Integrity:** the SHA-256 digest of `fh2-v5.5-bundle.tar.gz` is `1a762907e488985dd6d0b2f2f8b3deff6bd800a335c41f70c9ffb230c3b11981`. The `.sha256` file is also attached to the release.
+Run in the Ubuntu terminal:
 
-**Release archive checked:** extraction creates `fh2-onprem-prep-tool-v5.5/` with the v5.5 script, `docker.tar.gz`, `SHA256SUMS`, and local bundles for Ubuntu 22.04 and 24.04. The tagged source and the script included in the package refer to the same revision.
+```bash
+curl -fL --retry 3 \
+  "https://raw.githubusercontent.com/caioboamorte/fhop_prep_env/v5.5-online/fh2-onprem-prep-tool-v5.5-online.sh" \
+  -o fh2-onprem-prep-tool-v5.5-online.sh
 
-## Changes in v5.5
+sudo bash fh2-onprem-prep-tool-v5.5-online.sh --check-only
+sudo bash fh2-onprem-prep-tool-v5.5-online.sh
+```
 
-- Added `--offline`, with automatic selection of `packages/ubuntu-$VERSION_ID`.
-- Added `--offline-dir PATH` for bundles stored elsewhere.
-- Added base dependency and Google Chrome bundles for Ubuntu 22.04 and 24.04.
-- Offline APT uses isolated temporary lists and cache, excluding existing external indexes from package resolution.
-- Offline mode skips `apt update`, `apt upgrade`, `apt autoremove`, `apt autoclean`, external Internet/DNS tests, and external NTP enablement.
-- Docker Engine 27.2.0, Docker Compose 2.29.2, and containerd 1.7.21 are installed locally and locked with `apt-mark hold` after validation.
-- Google Chrome 155.0.8059.39 is installed through the local APT repository.
-- Added bundle integrity verification through `SHA256SUMS`.
-- Generic automatic NVIDIA driver installation remains disabled offline; a GPU without a working driver requires a bundle compatible with the customer's GPU/kernel combination.
-- Simplified the Docker bundle by removing a redundant nested copy of the same packages.
+Run `--check-only` first, review the report, then run preparation. Using `sudo bash` does not require `chmod`.
 
-### v5.5 validation
+To reboot automatically after preparation:
 
-- Bash syntax check passed.
-- All `.deb` files were validated for readable metadata and architecture.
-- The Ubuntu 24.04 base bundle includes `locales` and its dependency chain.
-- Ubuntu 24.04 Chrome passed static dependency closure and an APT simulation using only the local repository: 196 installable packages and zero unresolved dependencies.
-- Final archive structure, permissions, internal hashes, and compressed file were verified.
-- A final installation of the rebuilt bundle on minimal VMs is still recommended before production deployment.
+```bash
+sudo bash fh2-onprem-prep-tool-v5.5-online.sh --reboot
+```
 
-## Changes in v5.4.1
+This variant:
+- downloads Ubuntu dependencies and Chrome;
+- installs the recommended NVIDIA driver when a GPU is detected without a working driver;
+- configures the official Docker repository and selects Engine/CLI **27.2.0**, Compose **2.29.2**, containerd **1.7.21**, and Buildx **0.16.2**;
+- downloads the five Docker packages before removing conflicting packages; additional dependencies are resolved online during installation;
+- stops installation if an exact requested version is unavailable, without falling back to latest;
+- keeps an existing installation when the three main versions already match and applies `apt-mark hold`;
+- asks before changing an existing Docker installation, including downgrade. Installation may restart Docker and interrupt containers.
 
-According to the [release notes](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.4.1), also confirmed in the updated `main` source:
+It does not accept `--offline` or `--offline-dir`. The server needs access to package sources as well as access to download the script.
 
-- Added `iptables` to the packages installed before Docker.
-- Validates the installation state of `iptables` and its version command. Preparation stops before Docker installation if validation fails.
-- Checks `iptables`, `docker-ce`, `docker-ce-cli`, and `containerd.io` after installation. All must report `install ok installed` before version validation and locking.
-- Stops execution if any of these packages are missing or incompletely configured.
-- Initializes version variables to prevent unbound-variable errors when a component is not detected.
+## 2. v5.5 bundle: download and prepare offline
 
-The notes report a successful Bash syntax check and simulated tests of different `iptables` states. A full Docker installation was not tested in the environment used for that validation.
+Download the **`fh2-v5.5-bundle.tar.gz` release attachment** on a connected computer. Transfer the full archive to the server using USB, SCP or another method, then verify and extract it on the server.
 
-## Changes in v5.4
-
-According to the [v5.4 release notes](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.4), also confirmed in the `main` source:
-
-- Protects installed Docker packages with `apt-mark hold` before Ubuntu updates and dependency-repair attempts.
-- Unlocks packages in the dedicated installation step, after the user confirms replacement of an existing Docker installation and the required files are verified.
-- Keeps the locks when the user chooses to preserve the current installation.
-- Reapplies the lock after installation and validation of the expected versions.
-- Checks and configures Chrome before the final report, which includes its status and version.
-
-# Download and file preparation
-
-Download and extract the release attachment:
+The complete workflow below includes the download step, which must run on the connected computer:
 
 ```bash
 curl -fL --retry 3 \
   "https://github.com/caioboamorte/fhop_prep_env/releases/download/v5.5/fh2-v5.5-bundle.tar.gz" \
   -o fh2-v5.5-bundle.tar.gz
 
+echo "1a762907e488985dd6d0b2f2f8b3deff6bd800a335c41f70c9ffb230c3b11981  fh2-v5.5-bundle.tar.gz" | sha256sum -c -
+
 tar -xzvf fh2-v5.5-bundle.tar.gz
 cd fh2-onprem-prep-tool-v5.5
-```
-
-The created directory contains `fh2-onprem-prep-tool-v5.5.sh`, `docker.tar.gz`, `SHA256SUMS`, and `packages/`. Verify integrity first:
-
-```bash
 sha256sum -c SHA256SUMS
-```
 
-Then run the checks:
-
-```bash
-sudo bash fh2-onprem-prep-tool-v5.5.sh --check-only
-```
-
-After reviewing the results, prepare the environment offline:
-
-```bash
+sudo bash fh2-onprem-prep-tool-v5.5.sh --offline --check-only
 sudo bash fh2-onprem-prep-tool-v5.5.sh --offline
 ```
 
-To provide another bundle location:
+**On the offline server, start with `echo ... | sha256sum -c -` after transferring the archive.** The combined `--offline --check-only` command checks the environment without changes or external Internet/DNS tests.
+
+Extraction creates `fh2-onprem-prep-tool-v5.5/`. Keep the script and `docker.tar.gz` together. The script selects `packages/ubuntu-22.04` or `packages/ubuntu-24.04` automatically.
+
+For base and Chrome packages stored elsewhere, provide the directory containing `base/` and `chrome/`:
 
 ```bash
 sudo bash fh2-onprem-prep-tool-v5.5.sh --offline --offline-dir /mnt/usb/fh2-offline
 ```
 
-The online flow remains available with `sudo bash fh2-onprem-prep-tool-v5.5.sh`.
+`--offline-dir` also enables offline mode. It does not relocate `docker.tar.gz`, which must remain beside the script.
 
-To install or replace Docker, keep **`docker.tar.gz` in the same directory as the main script**. It must contain `docker/install_docker.sh` and `docker/uninstall_docker.sh`; these exact paths are validated after extraction.
+Offline mode:
+- resolves dependencies using isolated local APT lists and cache;
+- skips general Ubuntu updates and external downloads;
+- skips external Internet/DNS tests and external NTP enablement;
+- installs Docker components, Chrome and base dependencies from the bundle;
+- does not automatically install NVIDIA drivers. Prepare a GPU/kernel-compatible driver separately when required;
+- checks the internal `SHA256SUMS` manifest when present.
 
-The repository stores `docker.tar.gz` with **Git LFS**. A small file containing `version https://git-lfs.github.com/spec/v1` is only a pointer, not the installable archive. When using a Git clone, retrieve the LFS content; use the release attachment for the published distribution.
+To reboot after preparation:
 
----
+```bash
+sudo bash fh2-onprem-prep-tool-v5.5.sh --offline --reboot
+```
+
+**Do not substitute GitHub's “Source code (zip/tar.gz)” downloads for the release attachment.** The repository's `docker.tar.gz` uses Git LFS and may be only a small pointer file; use the published bundle.
+
+## 3. Using the bundle with Internet
+
+The bundle script can also run without `--offline`:
+
+```bash
+sudo bash fh2-onprem-prep-tool-v5.5.sh --check-only
+sudo bash fh2-onprem-prep-tool-v5.5.sh
+```
+
+Ubuntu dependencies, NVIDIA drivers and Chrome may be downloaded online, but Docker installation/replacement still requires local `docker.tar.gz`. Choose **v5.5 Online** to download Docker as well.
+
+## When is Docker detected, downloaded, installed and locked?
+
+Preparation performs **two different checks**: it first detects installed APT packages to protect them during Ubuntu updates, then reads Docker, Compose and containerd versions to decide whether installation is needed.
+
+| Stage | v5.5 Online | v5.5 bundle |
+| --- | --- | --- |
+| **1. Detect existing packages** | Before Ubuntu updates, queries installed Docker/containerd APT packages. This is not yet exact-version validation. | Same query, including offline mode. |
+| **2. Apply preventive locks** | Applies `apt-mark hold` to installed packages not already held, preventing `apt upgrade` from changing Docker before the user's decision. | Same protection. With `--offline`, general Ubuntu updates are skipped. |
+| **3. Detect and compare versions** | In the Docker/Compose checking step, after GPU, locale, connectivity, NTP and firewall steps, reads Docker, Compose and containerd and compares them with **27.2.0 / 2.29.2 / 1.7.21**. | Same comparison in the Docker step. |
+| **4. Decide whether to install** | If all three match, keeps the installation, applies/confirms locks and ends the Docker step. Existing mismatched Docker or Compose requires confirmation. When no installation is detected, this question is skipped. | Same decision. Declining replacement keeps the existing installation and preventive locks. |
+| **5. Obtain files** | After installation is selected, configures the official repository, resolves exact versions and downloads the five Docker packages **before releasing locks or removing conflicting packages**. | Does not download Docker during execution, even without `--offline`. Validates and extracts local `docker.tar.gz` and checks its installer files. |
+| **6. Unlock and install** | Releases locks for packages handled by the installer, removes conflicting packages when present and installs the downloaded `.deb` files. Additional dependencies are downloaded at this point. Then enables/starts Docker. | Releases locks. Runs the local uninstaller when replacing a detected installation, then runs the local bundle installer. |
+| **7. Validate and apply final locks** | Checks package installation states and the three main versions. After validation, applies `apt-mark hold` to installed Docker packages and confirms the APT holds. | Same validation and final locking. |
+
+### What does “locked” mean?
+
+The preventive lock in stage 2 **does not mean the versions are correct**. It protects the existing installation while Ubuntu is prepared. Final locks are applied/confirmed after checking the expected versions, or when those versions were already installed.
+
+The final lock handles these five packages:
+
+- `docker-ce`
+- `docker-ce-cli`
+- `containerd.io`
+- `docker-compose-plugin`
+- `docker-buildx-plugin`
+
+Exact final version validation covers **Engine, Compose and containerd**. Online installation also selects Buildx **0.16.2** for download; final version validation does not compare Buildx.
+
+Declining an adjustment of mismatched components leaves preventive locks in place, but **does not make the existing installation approved**. Review the Docker step messages and the final Docker status.
+
+### When are download and installation skipped?
+
+If Docker **27.2.0**, Compose **2.29.2** and containerd **1.7.21** already match, the script keeps them and applies/confirms locks. It does not download Docker packages or extract the bundle to reinstall them on this path.
+
+With `--check-only`, no downloads, installations, unlocks or new locks occur. It detects the Docker major version and Compose availability; it does not confirm the three exact versions or APT holds.
+
+To check manually after preparation:
+
+```bash
+docker --version
+docker compose version
+containerd --version
+apt-mark showhold
+```
+
+## Options and limitations
+
+| Option | v5.5 Online | v5.5 bundle |
+| --- | --- | --- |
+| `--check-only` | Checks without changes | Checks without changes; combine with `--offline` on isolated servers |
+| `--reboot` | Reboots after preparation | Reboots after preparation |
+| `--offline` | Not available | Uses local packages and skips external tests |
+| `--offline-dir PATH` | Not available | Overrides dependency directory and enables offline mode |
+| `--help` | Displays help | Displays help |
+
+With `--check-only`, `--reboot` is ignored. Check-only detects the Docker major version and Compose availability; it does not validate all three exact component versions or APT holds, and cannot guarantee later download or installation success.
+
+Preparation may set locale `en_US.UTF-8`, timezone `America/Sao_Paulo`, disable UFW, configure Chrome with `--no-sandbox`, and create `/fhop-install/install`, `/data/fhop-data`, `/terra-install`, and `/4G-install`. Ubuntu updates, automatic NVIDIA installation and NTP enablement belong to the Internet-enabled flow.
+
+## Validation status
+
+**v5.5 Online: ready for use.** Caio confirmed script review and testing on 2026-10-09, in addition to the previous Bash syntax, help and simulated exact-version selection checks. The specific test environment and scenarios were not detailed in this record.
+
+The [v5.5 release notes](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.5) document bundle validation, including package metadata, hashes and an offline APT simulation for Chrome on Ubuntu 24.04. Final installation on minimal VMs is also recommended before production.
 
 # Features
 
@@ -132,71 +198,6 @@ The repository stores `docker.tar.gz` with **Git LFS**. A small file containing 
 - Ubuntu 24.04 LTS
 
 The code checks the distribution and version in `/etc/os-release`; it does not distinguish Server from Desktop.
-
----
-
-# Execution Modes
-
-Run the commands below from the `fh2-onprem-prep-tool` directory. Using `sudo bash` does not require changing the script's execute permission.
-
-## 1. Verification Only (Recommended)
-
-Runs the available checks without modifying the system.
-
-```bash
-sudo bash fh2-onprem-prep-tool-v5.5.sh --check-only
-```
-
-In this mode, the script:
-
-- checks the items implemented in the script using the tools already available;
-- generates a complete environment report.
-
-**No changes are made**, including:
-
-- system updates;
-- package installation;
-- driver installation;
-- Docker installation or removal;
-- Google Chrome installation;
-- firewall configuration;
-- locale configuration;
-- timezone configuration;
-- NTP configuration;
-- directory creation;
-- system reboot.
-
----
-
-The `--check-only` mode does not validate all three exact Docker component versions or confirm existing APT locks. It detects the Docker major version and Compose availability. If `--reboot` is also supplied, reboot is ignored.
-
-## 2. Prepare the Environment
-
-```bash
-sudo bash fh2-onprem-prep-tool-v5.5.sh
-```
-
-In addition to validating the system, the script automatically prepares the operating system for a FlightHub 2 On-Premises installation.
-
----
-
-## 3. Prepare the Environment and Reboot Automatically
-
-```bash
-sudo bash fh2-onprem-prep-tool-v5.5.sh --reboot
-```
-
-Performs the complete environment preparation and automatically reboots the server when finished.
-
----
-
-## 4. Prepare the Environment Without Internet Access
-
-```bash
-sudo bash fh2-onprem-prep-tool-v5.5.sh --offline
-```
-
-The script automatically selects `packages/ubuntu-22.04` or `packages/ubuntu-24.04`. Use `--offline-dir PATH` to provide another bundle.
 
 ---
 
@@ -304,7 +305,7 @@ lsblk: /dev/└─sda: not a block device
 
 During normal preparation, installed Docker packages are protected before `apt upgrade` and dependency repairs. Existing locks are preserved at this stage. If Docker or Compose is already present, replacement requires confirmation; the default answer keeps the current installation.
 
-When keeping the existing Docker installation, package locks remain, but the script does not perform the exact three-component version check. After installing the recommended package, it validates the exact versions of Docker Engine, Docker Compose, and containerd.
+When the three main versions already match, they are checked and package locks are applied. If the user declines an adjustment of mismatched versions, the existing installation and its locks are kept. After installing the recommended package, it validates the exact versions of Docker Engine, Docker Compose, and containerd.
 
 Approved versions:
 
@@ -435,29 +436,7 @@ At the end of execution, the script displays a summary containing:
 - Google Chrome status;
 - Directory creation status.
 
-Also review each step's messages. In the current source, Internet and DNS appear as `OK` in the summary even after a failed check if execution continues; virtualization remains `Nao verificada` (not checked). The report is not a complete environment certification.
-
----
-
-# Recommended Workflow
-
-Before starting any FlightHub 2 On-Premises deployment:
-
-```bash
-sudo bash fh2-onprem-prep-tool-v5.5.sh --check-only
-```
-
-After resolving every issue reported:
-
-```bash
-sudo bash fh2-onprem-prep-tool-v5.5.sh
-```
-
-If you want the server to reboot automatically after the preparation is completed:
-
-```bash
-sudo bash fh2-onprem-prep-tool-v5.5.sh --reboot
-```
+Also review each step's messages. Virtualization remains `Nao verificada` (not checked). The report is not a complete environment certification.
 
 ---
 
