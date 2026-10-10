@@ -10,7 +10,7 @@ Há duas versões para preparar Ubuntu 22.04/24.04 para o DJI FlightHub 2 On-Pre
 | Servidor sem Internet ou com downloads externos bloqueados | **v5.5 com bundle**, usando `--offline` | Pacote completo da release: script, `docker.tar.gz`, `SHA256SUMS` e `packages/` |
 | Já possui o bundle e quer usar Internet para Ubuntu, Chrome e driver NVIDIA | **v5.5 com bundle**, sem `--offline` | O bundle continua necessário para instalar/substituir o Docker |
 
-**A v5.5 Online está pronta para uso, após revisão e testes de Caio confirmados em 09/10/2026. Está disponível na branch `v5.5-online` e no [PR #1](https://github.com/caioboamorte/fhop_prep_env/pull/1), ainda sem release própria.** A versão com bundle está na [release v5.5](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.5). O número 5.5 identifica as duas variantes; o sufixo `-online` diferencia o script que baixa também o Docker pela Internet.
+**A v5.5 Online está pronta para uso, após revisão e testes de Caio confirmados em 09/10/2026. Está integrada à `main` e publicada na [release v5.5 Online](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.5-online).** A versão com bundle está na [release v5.5](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.5). O número 5.5 identifica as duas variantes; o sufixo `-online` diferencia o script que baixa também o Docker pela Internet.
 
 ## 1. v5.5 Online: baixar e executar
 
@@ -20,7 +20,7 @@ Execute no terminal Ubuntu:
 
 ```bash
 curl -fL --retry 3 \
-  "https://raw.githubusercontent.com/caioboamorte/fhop_prep_env/v5.5-online/fh2-onprem-prep-tool-v5.5-online.sh" \
+  "https://github.com/caioboamorte/fhop_prep_env/releases/download/v5.5-online/fh2-onprem-prep-tool-v5.5-online.sh" \
   -o fh2-onprem-prep-tool-v5.5-online.sh
 
 sudo bash fh2-onprem-prep-tool-v5.5-online.sh --check-only
