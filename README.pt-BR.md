@@ -10,7 +10,7 @@ Há duas versões para preparar Ubuntu 22.04/24.04 para o DJI FlightHub 2 On-Pre
 | Servidor sem Internet ou com downloads externos bloqueados | **v5.5 com bundle**, usando `--offline` | Pacote completo da release: script, `docker.tar.gz`, `SHA256SUMS` e `packages/` |
 | Já possui o bundle e quer usar Internet para Ubuntu, Chrome e driver NVIDIA | **v5.5 com bundle**, sem `--offline` | O bundle continua necessário para instalar/substituir o Docker |
 
-**A v5.5 Online está na branch `v5.5-online`, em revisão no [PR #1](https://github.com/caioboamorte/fhop_prep_env/pull/1). Ela ainda não está em uma release.** A versão com bundle está na [release v5.5](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.5). O número 5.5 identifica as duas variantes; o sufixo `-online` diferencia o script que baixa também o Docker pela Internet.
+**A v5.5 Online está pronta para uso, após revisão e testes de Caio confirmados em 09/10/2026. Está disponível na branch `v5.5-online` e no [PR #1](https://github.com/caioboamorte/fhop_prep_env/pull/1), ainda sem release própria.** A versão com bundle está na [release v5.5](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.5). O número 5.5 identifica as duas variantes; o sufixo `-online` diferencia o script que baixa também o Docker pela Internet.
 
 ## 1. v5.5 Online: baixar e executar
 
@@ -167,7 +167,7 @@ A preparação pode configurar locale `en_US.UTF-8`, timezone `America/Sao_Paulo
 
 ## Estado de validação
 
-A variante online passou nas verificações de sintaxe Bash, ajuda e seleção exata de versões com dados simulados. Instalação real, disponibilidade dos pacotes e upgrade/downgrade ainda precisam de teste em Ubuntu 22.04/24.04.
+**v5.5 Online: pronta para uso.** Caio confirmou a revisão e os testes do script em 09/10/2026. Essa validação se soma às verificações anteriores de sintaxe Bash, ajuda e seleção exata de versões com dados simulados. O ambiente e os cenários específicos dos testes não foram detalhados neste registro.
 
 As [notas da release v5.5](https://github.com/caioboamorte/fhop_prep_env/releases/tag/v5.5) registram as validações do bundle, incluindo metadados, hashes e simulação APT do Chrome 24.04. Também recomendam instalação final em VMs mínimas antes de produção.
 
